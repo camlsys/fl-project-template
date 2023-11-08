@@ -1,0 +1,53 @@
+default_install_hook_types: [pre-commit, pre-push]
+exclude: |
+  (?x)^(
+                outputs/|
+                wandb/|
+                multirun/|
+                dev/|
+                .pre-commit-config.yaml
+
+  )$
+fail_fast: true
+repos:
+  - repo: local
+    hooks:
+      - id: isort
+        name: isort
+        entry: poetry run isort
+        language: system
+        types: [file, python]
+      - id: black
+        name: black
+        entry: poetry run black
+        language: system
+        types: [file, python]
+      - id: yamlfix
+        name: yamlfix
+        entry: poetry run black
+        language: system
+        types: [file, yaml]
+      - id: docformatter
+        name: docformatter
+        entry: poetry run docformatter
+        language: system
+        types: [file, python]
+      - id: ruff
+        name: ruff
+        entry: poetry run ruff
+        language: system
+        types: [file, python]
+      - id: mypy
+        name: mypy
+        entry: poetry run mypy --incremental --show-traceback
+        language: system
+        types: [file, python]
+        stages: [pre-push, manual]
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0 # Use the ref you want to point at
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: detect-private-key
