@@ -5,6 +5,7 @@ exclude: |
                 wandb/|
                 multirun/|
                 dev/|
+                slurm/|
                 .pre-commit-config.yaml
 
   )$

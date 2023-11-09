@@ -1,14 +1,11 @@
 ---
+# Control wandb logging
 use_wandb: true
 
 wandb:
   mode: enabled
   setup:
-    project: B_HFL_ICLR
-    group: ${task.data.preparation.dataset_path}
-    tags:
-      - strategy_${strategy.name}
-      - net_${task.client.network}
-      - seed_${fed.seed}
+    project: template
+    tags: ['strategy_${strategy.name}', 'net_${client.network}', 'seed_${fed.seed}']
     entity: null
     mode: online
