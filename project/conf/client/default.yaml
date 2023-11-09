@@ -1,1 +1,3 @@
-
+---
+get_client_generator:
+  _target_: project.client.client.get_client_generator

@@ -1,1 +1,9 @@
+---
+# Federated setup
+num_rounds: 10
+num_total_clients: 1
+num_clients_per_round: 1
+num_evaluate_clients_per_round: 0
 
+# Seed for client selection
+seed: 1337

@@ -8,10 +8,10 @@ defaults:
 # Control wandb logging
 use_wandb: true
 
+# Wandb configuration
 wandb:
-  mode: enabled
   setup:
     project: template
-    tags: ['strategy_${strategy.name}', 'net_${client.network}', 'seed_${fed.seed}']
+    tags: ['strategy_${strategy.name}', 'seed_${fed.seed}']
     entity: null
     mode: online

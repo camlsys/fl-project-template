@@ -13,7 +13,6 @@ echo "Run black"
 poetry run python -m black -q $PROJECT_NAME/
 echo "Run yamlfix"
 poetry run yamlfix $PROJECT_NAME/conf/
-poetry run yamlfix sweepers/
 echo "Run docformatter"
 poetry run python -m docformatter -i -r $PROJECT_NAME/
 echo "Run ruff"
