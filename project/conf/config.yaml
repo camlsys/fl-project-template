@@ -1,4 +1,10 @@
 ---
+defaults:
+  - _self_
+  - client: default
+  - fed: default
+  - strategy: fedavg
+
 # Control wandb logging
 use_wandb: true
 

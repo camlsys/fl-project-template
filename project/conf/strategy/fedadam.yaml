@@ -1,8 +1,8 @@
 ---
-name: FedYogi
+name: FedAdam
 
 init:
-  _target_: flwr.server.strategy.FedYogi
+  _target_: flwr.server.strategy.FedAdam
   beta_1: 0.9
   beta_2: 0.99
   eta: 0.01

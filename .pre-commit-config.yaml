@@ -9,7 +9,7 @@ exclude: |
                 .pre-commit-config.yaml
 
   )$
-fail_fast: true
+# fail_fast: true
 repos:
   - repo: local
     hooks:

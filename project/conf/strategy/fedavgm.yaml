@@ -1,0 +1,7 @@
+---
+name: FedAvgM
+
+init:
+  _target_: flwr.server.strategy.FedAvgM
+  server_learning_rate: 0.31622
+  server_momentum: 0.9
