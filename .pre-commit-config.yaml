@@ -19,22 +19,22 @@ repos:
         types: [file, python]
       - id: black
         name: black
-        entry: poetry run black
+        entry: poetry run black -q
         language: system
         types: [file, python]
       - id: yamlfix
         name: yamlfix
-        entry: poetry run black
+        entry: poetry run yamlfix
         language: system
         types: [file, yaml]
       - id: docformatter
         name: docformatter
-        entry: poetry run docformatter
+        entry: poetry run docformatter -i -r
         language: system
         types: [file, python]
       - id: ruff
         name: ruff
-        entry: poetry run ruff
+        entry: poetry run ruff --fix
         language: system
         types: [file, python]
       - id: mypy
