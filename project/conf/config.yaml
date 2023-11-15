@@ -5,6 +5,28 @@ defaults:
   - fed: default
   - strategy: fedavg
 
+# If running the same experiment multiple times
+# you may wish to save results to the same directory
+# if null, defaults to the hydra dir
+reuse_output_dir: null
+
+# Working dir to save temporary files to
+# If null, defaults to hydra_dir/working
+working_dir: null
+
+# List of file patterns to be saved
+# at the end of training
+to_save_once: [history]
+
+# List of file patterns to be saved repeteadly
+to_save_per_round: []
+# The frequency with which they should be saved
+save_frequency: 1
+
+# List of flie patterns to be deleted
+# prior to and at the end of training
+to_clean_once: [history]
+
 # Control wandb logging
 use_wandb: true
 

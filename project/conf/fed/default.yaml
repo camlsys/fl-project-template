@@ -5,5 +5,13 @@ num_total_clients: 1
 num_clients_per_round: 1
 num_evaluate_clients_per_round: 0
 
+# Client resources
+cpus_per_client: 11
+gpus_per_client: 1
+
 # Seed for client selection
 seed: 1337
+
+# If clients should be sampled with replacement
+# when the dataset is not large enough
+enable_resampling: false
