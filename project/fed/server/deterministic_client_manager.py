@@ -1,7 +1,7 @@
 """A client manager that guarantees deterministic client sampling."""
 
+import logging
 import random
-from logging import INFO
 from typing import List, Optional
 
 from flwr.common.logger import log
@@ -13,7 +13,8 @@ from flwr.server.criterion import Criterion
 class DeterministicClientManager(SimpleClientManager):
     """A deterministic client manager.
 
-    Samples clients in the same order every time based on the seed.
+    Samples clients in the same order every time based on the seed. Also allows sampling
+    with replacement.
     """
 
     def __init__(
@@ -51,7 +52,7 @@ class DeterministicClientManager(SimpleClientManager):
             available_cids = self.rng.choices(cids, k=num_clients)
         else:
             log(
-                INFO,
+                logging.INFO,
                 "Sampling failed: number of available clients"
                 " (%s) is less than number of requested clients (%s).",
                 len(available_cids),
@@ -60,5 +61,5 @@ class DeterministicClientManager(SimpleClientManager):
             available_cids = []
 
         client_list = [self.clients[cid] for cid in available_cids]
-        print("Sampled the following clients: ", available_cids)
+        log(logging.INFO, "Sampled the following clients: %s", available_cids)
         return client_list

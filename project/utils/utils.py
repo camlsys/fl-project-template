@@ -4,6 +4,7 @@ Generic utilities.
 """
 
 
+import logging
 import random
 import shutil
 from pathlib import Path
@@ -12,6 +13,7 @@ from typing import Any, Callable, List, Optional
 import numpy as np
 import ray
 import torch
+from flwr.common.logger import log
 
 import wandb
 
@@ -71,8 +73,9 @@ class RayContextManager:
             ray.shutdown()
             directory_size = shutil.disk_usage(temp_dir).used
             shutil.rmtree(temp_dir)
-            print(
-                f"Cleaned up ray temp session: {temp_dir} with size: {directory_size}"
+            log(
+                logging.INFO,
+                f"Cleaned up ray temp session: {temp_dir} with size: {directory_size}",
             )
 
 
@@ -98,7 +101,7 @@ def save_files(
     output_dir: Path,
     to_save: List[str],
     ending: Optional[str] = None,
-    top_level: bool = False,
+    top_level: bool = True,
 ) -> None:
     """Save the files in the working dir."""
     if not top_level:
@@ -119,11 +122,12 @@ def save_files(
 
                         destination_file.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copy(file, destination_file)
+                        break
         else:
             children.append(file)
 
     for child in children:
-        save_files(child, output_dir, to_save=to_save, ending=ending, top_level=True)
+        save_files(child, output_dir, to_save=to_save, ending=ending, top_level=False)
 
 
 def get_save_files_every_round(
@@ -158,15 +162,15 @@ class FileSystemManager:
 
     def __enter__(self):
         """Initialize the context manager and cleanup."""
-        print(f"Pre-cleaning {self.to_clean_once}")
+        log(logging.INFO, f"Pre-cleaning {self.to_clean_once}")
         cleanup(self.path_dict, self.to_clean_once)
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         """Cleanup the files."""
-        print(f"Saving {self.to_save_once}")
+        log(logging.INFO, f"Saving {self.to_save_once}")
         save_files(
             self.path_dict, self.output_dir, to_save=self.to_save_once, ending=""
         )
-        print(f"Post-cleaning {self.to_clean_once}")
+        log(logging.INFO, f"Post-cleaning {self.to_clean_once}")
         cleanup(self.path_dict, to_clean=self.to_clean_once)

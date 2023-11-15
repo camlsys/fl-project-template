@@ -1,7 +1,7 @@
 """History class which sends metrics to wandb.
 
-This means metrics are collected only at the central server, minimizing communication
-costs. Metric collection only happens if wandb is turned on.
+Metrics are collected only at the central server, minimizing communication costs. Metric
+collection only happens if wandb is turned on.
 """
 from typing import Dict
 

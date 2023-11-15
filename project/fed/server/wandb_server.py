@@ -1,9 +1,9 @@
-"""Flower server accounting for using Weights&Biases+file saving."""
+"""Flower server accounting for Weights&Biases+file saving."""
 import timeit
 from logging import INFO
 from typing import Callable, List, Optional, Tuple, Union
 
-from flwr.common import DisconnectRes, EvaluateRes, FitRes
+from flwr.common import DisconnectRes, EvaluateRes, FitRes, Parameters
 from flwr.common.logger import log
 from flwr.server import Server
 from flwr.server.client_manager import ClientManager
@@ -34,11 +34,13 @@ class WandbServer(Server):
         client_manager: ClientManager,
         strategy: Optional[Strategy] = None,
         history: Optional[History] = None,
+        save_parameters_to_file: Callable[[Parameters], None],
         save_files_per_round: Callable[[int], None],
     ) -> None:
         super().__init__(client_manager=client_manager, strategy=strategy)
 
         self.history: Optional[History] = history
+        self.save_parameters_to_file = save_parameters_to_file
         self.save_files_per_round = save_files_per_round
 
     # pylint: disable=too-many-locals
@@ -107,6 +109,7 @@ class WandbServer(Server):
                     history.add_metrics_distributed(
                         server_round=current_round, metrics=evaluate_metrics_fed
                     )
+            self.save_parameters_to_file(self.parameters)
             self.save_files_per_round(current_round)
 
         # Bookkeeping

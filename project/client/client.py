@@ -1,4 +1,7 @@
-"""The default client implementation."""
+"""The default client implementation.
+
+Make sure the model and dataset are not loaded before the fit function.
+"""
 from pathlib import Path
 from typing import Callable, Dict, Optional
 

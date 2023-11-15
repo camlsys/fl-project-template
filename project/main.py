@@ -3,12 +3,11 @@
 It includes processioning the dataset, instantiate strategy, specify how the global
 model is going to be evaluated, etc. At the end, this script saves the results.
 """
-# these are the basic packages you'll need here
-# feel free to remove some if aren't needed
 import json
 import logging
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -27,7 +26,10 @@ from project.fed.server.deterministic_client_manager import DeterministicClientM
 # Never do a relative import nor one that assumes a given folder structure
 from project.fed.server.wandb_history import WandbHistory
 from project.fed.server.wandb_server import WandbServer
-from project.fed.utils.utils import get_weighted_avg_metrics_agg_fn
+from project.fed.utils.utils import (
+    get_save_parameters_to_file,
+    get_weighted_avg_metrics_agg_fn,
+)
 from project.task.default.models import get_model as get_default_model
 from project.task.default.train_test import get_fed_eval_fn as get_default_fed_eval_fn
 from project.task.default.train_test import (
@@ -47,6 +49,7 @@ from project.utils.utils import (
     FileSystemManager,
     RayContextManager,
     get_save_files_every_round,
+    seed_everything,
     wandb_init,
 )
 
@@ -101,22 +104,34 @@ def main(cfg: DictConfig) -> None:
     # from a dataset, it's up to you)
     # <Your code here>
 
+    # Wandb context manager
+    # controlls if wandb is initialised or not
+    # if not it returns a dummy run
     with wandb_init(
         cfg.use_wandb,
         **cfg.wandb.setup,
         settings=wandb.Settings(start_method="thread"),
         config=wandb_config,  # type: ignore
     ) as run:
-        print("Wandb run initialized with ", cfg.use_wandb)
+        log(logging.INFO, "Wandb run initialized with %s", cfg.use_wandb)
+
+        # Context managers for saving and cleaning up files
+        # from working directory at start/end of simulation
+        # The RayContextManager delets the ray session folder
         with FileSystemManager(
             working_dir, output_directory, cfg.to_clean_once, cfg.to_save_once
         ) and RayContextManager() as _, _:
+            # Which files to save every <to_save_per_round> rounds
+            # e.g model checkpoints
             save_files_per_round = get_save_files_every_round(
                 working_dir,
                 results_dir,
                 cfg.to_save_per_round,
                 cfg.save_frequency,
             )
+
+            save_parameters_to_file = get_save_parameters_to_file(working_dir)
+
             client_manager = DeterministicClientManager(
                 cfg.fed.seed, cfg.fed.enable_resampling
             )
@@ -133,16 +148,12 @@ def main(cfg: DictConfig) -> None:
 
             # 4. Define your strategy
             # pass all relevant argument
-
+            # Fraction_fit and fraction_evaluate are ignored
+            # in favour of using absolute numbers via min_fit_clients
             instantiate(
                 cfg.strategy.init,
-                fraction_fit=(
-                    float(cfg.fed.num_clients_per_round) / cfg.fed.num_total_clients
-                ),
-                fraction_evaluate=(
-                    float(cfg.fed.num_evaluate_clients_per_round)
-                    / cfg.fed.num_total_clients
-                ),
+                fraction_fit=sys.float_info.min,
+                fraction_evaluate=sys.float_info.min,
                 min_fit_clients=cfg.fed.num_clients_per_round,
                 min_evaluate_clients=cfg.fed.num_evaluate_clients_per_round,
                 min_available_clients=cfg.fed.num_total_clients,
@@ -162,6 +173,7 @@ def main(cfg: DictConfig) -> None:
                 client_manager=client_manager,
                 history=history,
                 strategy=None,
+                save_parameters_to_file=save_parameters_to_file,
                 save_files_per_round=save_files_per_round,
             )
 
@@ -170,6 +182,7 @@ def main(cfg: DictConfig) -> None:
             )
 
             # 5. Start Simulation
+            seed_everything(cfg.fed.seed)
             fl.simulation.start_simulation(
                 client_fn=client_generator,
                 num_clients=cfg.fed.num_total_clients,
@@ -194,11 +207,12 @@ def main(cfg: DictConfig) -> None:
                 str((output_directory).resolve()),
                 "now",
             )
-            print(
+            log(
+                logging.INFO,
                 subprocess.run(
                     ["wandb", "sync", "--clean-old-hours", "24"],
                     capture_output=True,
                     text=True,
                     check=True,
-                )
+                ),
             )
