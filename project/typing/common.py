@@ -7,7 +7,7 @@ from flwr.common import NDArrays
 
 NetGenerator = Callable[[Dict], nn.Module]
 
-ClientGenerator = Callable[[int], fl.client.NumPyClient]
+ClientGenerator = Callable[[int | str], fl.client.NumPyClient]
 FitRes = Tuple[NDArrays, int, Dict]
 EvalRes = Tuple[float, int, Dict]
 

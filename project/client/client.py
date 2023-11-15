@@ -61,6 +61,6 @@ class Client(fl.client.NumPyClient):
 
 def get_client_generator(
     working_dir: Path, net_generator: NetGenerator
-) -> Callable[[int], Client]:
+) -> Callable[[int | str], Client]:
     """Return a function which creates a new Client for a given config."""
     return lambda i: Client(i, working_dir=working_dir, net_generator=net_generator)
