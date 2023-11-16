@@ -25,19 +25,7 @@ def get_model(config: Dict) -> nn.Module:
 
     Returns
     -------
-        A PyTorch model.
-    """
-    return Model()
-
-
-def get_initial_parameters(config: Dict) -> nn.Module:
-    """Return a model instance.
-
-    Args:
-        config: A dictionary with the model configuration.
-
-    Returns
-    -------
+    nn.Module
         A PyTorch model.
     """
     return Model()

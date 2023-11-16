@@ -8,7 +8,7 @@ import logging
 import random
 import shutil
 from pathlib import Path
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import ray
@@ -18,7 +18,7 @@ from flwr.common.logger import log
 import wandb
 
 
-def get_device() -> torch.device:
+def obtain_device() -> torch.device:
     """Get the device (CPU or GPU) for torch."""
     return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -29,6 +29,14 @@ def lazy_wrapper(x: Callable) -> Callable[[], Any]:
     For easy instantion through hydra.
     """
     return lambda: x
+
+
+def lazy_config_wrapper(x: Callable) -> Callable[[Dict], Any]:
+    """Wrap a value in a function that returns the value given a config.
+
+    For easy instantion through hydra.
+    """
+    return lambda _config: x
 
 
 def seed_everything(seed: int) -> None:

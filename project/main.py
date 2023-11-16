@@ -30,13 +30,16 @@ from project.fed.utils.utils import (
     get_save_parameters_to_file,
     get_weighted_avg_metrics_agg_fn,
 )
-from project.task.default.models import get_model as get_default_model
-from project.task.default.train_test import get_fed_eval_fn as get_default_fed_eval_fn
-from project.task.default.train_test import (
-    get_on_evaluate_config_fn as get_default_on_evaluate_config_fn,
+from project.task.mnist_classification.dataset import get_dataloader_generators
+from project.task.mnist_classification.models import get_net as get_net_mnist
+from project.task.mnist_classification.train_test import (
+    get_fed_eval_fn as get_fed_eval_fn_mnist,
 )
-from project.task.default.train_test import (
-    get_on_fit_config_fn as get_default_on_fit_config_fn,
+from project.task.mnist_classification.train_test import (
+    get_on_evaluate_config_fn as get_on_evaluate_config_fn_mnist,
+)
+from project.task.mnist_classification.train_test import (
+    get_on_fit_config_fn as get_on_fit_config_fn_mnist,
 )
 from project.typing.common import (
     ClientGenerator,
@@ -94,16 +97,6 @@ def main(cfg: DictConfig) -> None:
 
     working_dir.mkdir(parents=True, exist_ok=True)
 
-    # 2. Prepare your dataset
-    # here you should call a function in project.task.<your_task>.datasets.py
-    # that returns whatever is needed to:
-    # (1) ensure the server can access the dataset used to evaluate your model after
-    # aggregation
-    # (2) tell each client what dataset partitions they should use (e.g. a this could
-    # be a location in the file system, a list of dataloader, a list of ids to extract
-    # from a dataset, it's up to you)
-    # <Your code here>
-
     # Wandb context manager
     # controlls if wandb is initialised or not
     # if not it returns a dummy run
@@ -139,12 +132,20 @@ def main(cfg: DictConfig) -> None:
 
             # Keep this style if you want to dynamically
             # choose the functions using the Hydra config
-            net_generator: NetGenerator = get_default_model
-            evaluate_fn: Optional[FedEvalFN] = get_default_fed_eval_fn()
-            on_fit_config_fn: Optional[OnFitConfigFN] = get_default_on_fit_config_fn()
+            net_generator: NetGenerator = get_net_mnist
+            get_client_dataloader, get_federated_dataloader = get_dataloader_generators(
+                cfg.dataset.partition_dir
+            )
+            evaluate_fn: Optional[FedEvalFN] = get_fed_eval_fn_mnist(
+                net_generator, get_federated_dataloader(True, cfg.fed.batch_size)
+            )
+
+            on_fit_config_fn: Optional[OnFitConfigFN] = get_on_fit_config_fn_mnist(
+                cfg.client.fit_config
+            )
             on_evaluate_config_fn: Optional[
                 OnEvaluateConfigFN
-            ] = get_default_on_evaluate_config_fn()
+            ] = get_on_evaluate_config_fn_mnist(cfg.client.fit_config)
 
             # 4. Define your strategy
             # pass all relevant argument

@@ -53,7 +53,9 @@ def download_and_preprocess(cfg: DictConfig) -> None:
     partition_dir.mkdir(parents=True, exist_ok=True)
 
     # Save the centralised test set
-    torch.save(fed_test_set, partition_dir / "fed_test.pt")
+    # a centrailsed training set would also be possible
+    # but is not used here
+    torch.save(fed_test_set, partition_dir / "test.pt")
 
     # Save the client datasets
     for idx, client_dataset in enumerate(client_datasets):
