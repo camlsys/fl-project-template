@@ -6,9 +6,11 @@ Generic utilities.
 
 import logging
 import random
+import re
 import shutil
+from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import ray
@@ -36,7 +38,7 @@ def lazy_config_wrapper(x: Callable) -> Callable[[Dict], Any]:
 
     For easy instantion through hydra.
     """
-    return lambda _config: x
+    return lambda _config: x()
 
 
 def seed_everything(seed: int) -> None:
@@ -108,7 +110,8 @@ def save_files(
     working_dir: Path,
     output_dir: Path,
     to_save: List[str],
-    ending: Optional[str] = None,
+    highest_index_map: Dict[Tuple[Path, str, str], int],
+    ending: Optional[int] = None,
     top_level: bool = True,
 ) -> None:
     """Save the files in the working dir."""
@@ -121,12 +124,27 @@ def save_files(
             for save_token in to_save:
                 if save_token in file.name:
                     if file.exists():
-                        if ending is not None:
-                            destination_file = (
-                                output_dir / file.with_stem(f"{file.stem}{ending}").name
-                            )
-                        else:
-                            destination_file = output_dir / file.name
+                        key = (working_dir, file.stem, file.suffix)
+                        same_name_files = list(
+                            output_dir.glob(f"{file.stem}_*{file.suffix}")
+                        )
+                        if key not in highest_index_map:
+                            indices = [
+                                int(v.group(1))
+                                for f in same_name_files
+                                if (v := re.search(r"_([0-9]+)", f.stem))
+                            ]
+                            highest_index_map[key] = max(indices) + 1 if indices else 0
+
+                        true_ending = (
+                            f"{highest_index_map[key]}" + ("_" + str(ending))
+                            if ending is not None
+                            else f"{highest_index_map[key]}"
+                        )
+                        destination_file = (
+                            output_dir
+                            / file.with_stem(f"{file.stem}_{true_ending}").name
+                        )
 
                         destination_file.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copy(file, destination_file)
@@ -135,7 +153,14 @@ def save_files(
             children.append(file)
 
     for child in children:
-        save_files(child, output_dir, to_save=to_save, ending=ending, top_level=False)
+        save_files(
+            child,
+            output_dir,
+            to_save=to_save,
+            ending=ending,
+            top_level=False,
+            highest_index_map=highest_index_map,
+        )
 
 
 def get_save_files_every_round(
@@ -145,10 +170,17 @@ def get_save_files_every_round(
     save_frequency: int,
 ) -> Callable[[int], None]:
     """Get a function that saves files every save_frequency rounds."""
+    highest_index_map: Dict[Tuple[Path, str, str], int] = {}
 
     def save_files_round(cur_round: int) -> None:
         if cur_round % save_frequency == 0:
-            save_files(working_dir, output_dir, to_save=to_save, ending=f"_{cur_round}")
+            save_files(
+                working_dir,
+                output_dir,
+                to_save=to_save,
+                ending=cur_round,
+                highest_index_map=highest_index_map,
+            )
 
     return save_files_round
 
@@ -162,23 +194,73 @@ class FileSystemManager:
         output_dir,
         to_clean_once: List[str],
         to_save_once: List[str],
+        original_hydra_dir: Path,
+        reuse_output_dir: bool,
     ) -> None:
         self.to_clean_once = to_clean_once
-        self.path_dict = working_dir
+        self.working_dir = working_dir
         self.output_dir = output_dir
         self.to_save_once = to_save_once
+        self.original_hydra_dir = original_hydra_dir
+        self.reuse_output_dir = reuse_output_dir
 
     def __enter__(self):
         """Initialize the context manager and cleanup."""
         log(logging.INFO, f"Pre-cleaning {self.to_clean_once}")
-        cleanup(self.path_dict, self.to_clean_once)
+        cleanup(self.working_dir, self.to_clean_once)
+
         return self
 
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         """Cleanup the files."""
         log(logging.INFO, f"Saving {self.to_save_once}")
+
+        # Copy the hydra directory to the working directory
+        # so that multiple runs can be ran
+        # in the same output directory and configs versioned
+        hydra_dir = self.working_dir / ".hydra"
+
+        shutil.copytree(
+            str(self.original_hydra_dir / ".hydra"),
+            str(object=hydra_dir),
+            dirs_exist_ok=True,
+        )
+
+        # Move main.log to the working directory
+        main_log = self.original_hydra_dir / "main.log"
+        shutil.copy2(str(main_log), str(self.working_dir / "main.log"))
         save_files(
-            self.path_dict, self.output_dir, to_save=self.to_save_once, ending=""
+            self.working_dir,
+            self.output_dir,
+            to_save=self.to_save_once,
+            highest_index_map={},
         )
         log(logging.INFO, f"Post-cleaning {self.to_clean_once}")
-        cleanup(self.path_dict, to_clean=self.to_clean_once)
+        cleanup(self.working_dir, to_clean=self.to_clean_once)
+
+
+def get_parameter_convertor(
+    convertors: Iterable[Tuple[Any, Callable]]
+) -> Callable[[Callable], Callable]:
+    """Get a decorator that converts parameters to the right type."""
+
+    def convert(param: Any) -> bool:
+        for param_type, convertor in convertors:
+            if isinstance(param, param_type):
+                return convertor(param)
+        return param
+
+    def convert_params(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            new_args = []
+            new_kwargs = {}
+            for arg in args:
+                new_args.append(convert(arg))
+            for kwarg_name, kwarg_value in kwargs.items():
+                new_kwargs[kwarg_name] = convert(kwarg_value)
+            return func(*new_args, **new_kwargs)
+
+        return wrapper
+
+    return convert_params

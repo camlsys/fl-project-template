@@ -13,70 +13,6 @@ from torch.utils.data import ConcatDataset, Subset, random_split
 from torchvision.datasets import MNIST
 
 
-@hydra.main(config_path="conf", config_name="base", version_base=None)
-def download_and_preprocess(cfg: DictConfig) -> None:
-    """Download and preprocess the dataset.
-
-    Parameters
-    ----------
-    cfg : DictConfig
-        An omegaconf object that stores the hydra config.
-    """
-    ## 1. print parsed config
-    log(logging.INFO, OmegaConf.to_yaml(cfg))
-
-    # Please include here all the logic
-    # Please use the Hydra config style as much as possible specially
-    # for parts that can be customised (e.g. how data is partitioned)
-
-    # Download the dataset
-    trainset, testset = _download_data(cfg.dataset.dataset_dir)
-
-    # Partition the dataset
-    # ideally, the fed_test_set can be composed in three ways:
-    # 1. fed_test_set = centralised test set like MNIST
-    # 2. fed_test_set = concatenation of all test sets of all clients
-    # 3. fed_test_set = test sets of reserved unseen clients
-    client_datasets, fed_test_set = _partition_data(
-        trainset,
-        testset,
-        cfg.dataset.num_clients,
-        cfg.dataset.seed,
-        cfg.dataset.iid,
-        cfg.dataset.power_law,
-        cfg.dataset.balance,
-    )
-
-    # 2. Save the datasets
-    # unnecessary for this small dataset, but useful for large datasets
-    partition_dir = Path(cfg.dataset.partition_dir)
-    partition_dir.mkdir(parents=True, exist_ok=True)
-
-    # Save the centralised test set
-    # a centrailsed training set would also be possible
-    # but is not used here
-    torch.save(fed_test_set, partition_dir / "test.pt")
-
-    # Save the client datasets
-    for idx, client_dataset in enumerate(client_datasets):
-        client_dir = partition_dir / f"client_{idx}"
-        client_dir.mkdir(parents=True, exist_ok=True)
-
-        len_val = int(len(client_dataset) / (1 / cfg.dataset.val_ratio))
-        lengths = [len(client_dataset) - len_val, len_val]
-        ds_train, ds_val = random_split(
-            client_dataset, lengths, torch.Generator().manual_seed(cfg.seed)
-        )
-        # Alternative would have been to create train/test split
-        # when the dataloader is instantiated
-        torch.save(ds_train, client_dir / "train.pt")
-        torch.save(ds_val, client_dir / "test.pt")
-
-
-if __name__ == "__main__":
-    download_and_preprocess()
-
-
 def _download_data(dataset_dir: Path) -> Tuple[MNIST, MNIST]:
     """Download (if necessary) and returns the MNIST dataset.
 
@@ -88,12 +24,10 @@ def _download_data(dataset_dir: Path) -> Tuple[MNIST, MNIST]:
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
     )
+    dataset_dir.mkdir(parents=True, exist_ok=True)
 
-    mnist_dir = dataset_dir / "mnist"
-    mnist_dir.mkdir(parents=True, exist_ok=True)
-
-    trainset = MNIST(str(mnist_dir), train=True, download=True, transform=transform)
-    testset = MNIST(str(mnist_dir), train=False, download=True, transform=transform)
+    trainset = MNIST(str(dataset_dir), train=True, download=True, transform=transform)
+    testset = MNIST(str(dataset_dir), train=False, download=True, transform=transform)
     return trainset, testset
 
 
@@ -115,18 +49,18 @@ def _partition_data(
     ----------
     num_clients : int
         The number of clients that hold a part of the data
-    iid : bool, optional
+    iid : bool
         Whether the data should be independent and identically distributed between
         the clients or if the data should first be sorted by labels and distributed
         by chunks to each client (used to test the convergence in a worst case scenario)
         , by default False
-    power_law: bool, optional
+    power_law: bool
         Whether to follow a power-law distribution when assigning number of samples
         for each client, defaults to True
-    balance : bool, optional
+    balance : bool
         Whether the dataset should contain an equal number of samples in each class,
         by default False
-    seed : int, optional
+    seed : int
         Used to set a fix seed to replicate experiments, by default 42
 
     Returns
@@ -354,3 +288,67 @@ def _power_law_split(
     # construct subsets
     partitions = [Subset(sorted_trainset, p) for p in partitions_idx]
     return partitions
+
+
+@hydra.main(config_path="../../conf", config_name="base", version_base=None)
+def download_and_preprocess(cfg: DictConfig) -> None:
+    """Download and preprocess the dataset.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        An omegaconf object that stores the hydra config.
+    """
+    ## 1. print parsed config
+    log(logging.INFO, OmegaConf.to_yaml(cfg))
+
+    # Please include here all the logic
+    # Please use the Hydra config style as much as possible specially
+    # for parts that can be customised (e.g. how data is partitioned)
+
+    # Download the dataset
+    trainset, testset = _download_data(Path(cfg.dataset.dataset_dir))
+
+    # Partition the dataset
+    # ideally, the fed_test_set can be composed in three ways:
+    # 1. fed_test_set = centralised test set like MNIST
+    # 2. fed_test_set = concatenation of all test sets of all clients
+    # 3. fed_test_set = test sets of reserved unseen clients
+    client_datasets, fed_test_set = _partition_data(
+        trainset,
+        testset,
+        cfg.dataset.num_clients,
+        cfg.dataset.seed,
+        cfg.dataset.iid,
+        cfg.dataset.power_law,
+        cfg.dataset.balance,
+    )
+
+    # 2. Save the datasets
+    # unnecessary for this small dataset, but useful for large datasets
+    partition_dir = Path(cfg.dataset.partition_dir)
+    partition_dir.mkdir(parents=True, exist_ok=True)
+
+    # Save the centralised test set
+    # a centrailsed training set would also be possible
+    # but is not used here
+    torch.save(fed_test_set, partition_dir / "test.pt")
+
+    # Save the client datasets
+    for idx, client_dataset in enumerate(client_datasets):
+        client_dir = partition_dir / f"client_{idx}"
+        client_dir.mkdir(parents=True, exist_ok=True)
+
+        len_val = int(len(client_dataset) / (1 / cfg.dataset.val_ratio))
+        lengths = [len(client_dataset) - len_val, len_val]
+        ds_train, ds_val = random_split(
+            client_dataset, lengths, torch.Generator().manual_seed(cfg.dataset.seed)
+        )
+        # Alternative would have been to create train/test split
+        # when the dataloader is instantiated
+        torch.save(ds_train, client_dir / "train.pt")
+        torch.save(ds_val, client_dir / "test.pt")
+
+
+if __name__ == "__main__":
+    download_and_preprocess()

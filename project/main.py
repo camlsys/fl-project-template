@@ -9,7 +9,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 import flwr as fl
 import hydra
@@ -19,7 +19,9 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 import wandb
-from project.client.client import get_client_generator as get_default_client_generator
+from project.client.mnist_client import (
+    get_client_generator as get_client_generator_mnist,
+)
 from project.fed.server.deterministic_client_manager import DeterministicClientManager
 
 # Only import from the project root
@@ -27,8 +29,10 @@ from project.fed.server.deterministic_client_manager import DeterministicClientM
 from project.fed.server.wandb_history import WandbHistory
 from project.fed.server.wandb_server import WandbServer
 from project.fed.utils.utils import (
+    get_initial_parameters,
     get_save_parameters_to_file,
     get_weighted_avg_metrics_agg_fn,
+    test_client,
 )
 from project.task.mnist_classification.dataset import get_dataloader_generators
 from project.task.mnist_classification.models import get_net as get_net_mnist
@@ -41,10 +45,10 @@ from project.task.mnist_classification.train_test import (
 from project.task.mnist_classification.train_test import (
     get_on_fit_config_fn as get_on_fit_config_fn_mnist,
 )
-from project.typing.common import (
-    ClientGenerator,
+from project.types.common import (
+    ClientGen,
     FedEvalFN,
-    NetGenerator,
+    NetGen,
     OnEvaluateConfigFN,
     OnFitConfigFN,
 )
@@ -61,7 +65,7 @@ os.environ["HYDRA_FULL_ERROR"] = "1"
 os.environ["OC_CAUSE"] = "1"
 
 
-@hydra.main(config_path="conf", config_name="base", version_base=None)
+@hydra.main(config_path="conf", config_name="mnist", version_base=None)
 def main(cfg: DictConfig) -> None:
     """Run the baseline.
 
@@ -76,9 +80,11 @@ def main(cfg: DictConfig) -> None:
     wandb_config = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
 
     # Obtain the output dir from hydra
-    output_directory = Path(
+    original_hydra_dir = Path(
         hydra.utils.to_absolute_path(HydraConfig.get().runtime.output_dir)
     )
+
+    output_directory = original_hydra_dir
 
     # Reuse an output directory for checkpointing
     if cfg.reuse_output_dir is not None:
@@ -86,9 +92,10 @@ def main(cfg: DictConfig) -> None:
 
     # The directory to save data to
     results_dir = output_directory / "results"
+    results_dir.mkdir(parents=True, exist_ok=True)
 
     # Where to save files to and from
-    if cfg.save_from_dir is not None:
+    if cfg.working_dir is not None:
         # Pre-defined directory
         working_dir = Path(cfg.working_dir)
     else:
@@ -112,8 +119,13 @@ def main(cfg: DictConfig) -> None:
         # from working directory at start/end of simulation
         # The RayContextManager delets the ray session folder
         with FileSystemManager(
-            working_dir, output_directory, cfg.to_clean_once, cfg.to_save_once
-        ) and RayContextManager() as _, _:
+            working_dir=working_dir,
+            output_dir=results_dir,
+            to_clean_once=cfg.to_clean_once,
+            to_save_once=cfg.to_save_once,
+            original_hydra_dir=original_hydra_dir,
+            reuse_output_dir=cfg.reuse_output_dir,
+        ) as _fs_manager, RayContextManager() as _ray_manager:
             # Which files to save every <to_save_per_round> rounds
             # e.g model checkpoints
             save_files_per_round = get_save_files_every_round(
@@ -132,26 +144,44 @@ def main(cfg: DictConfig) -> None:
 
             # Keep this style if you want to dynamically
             # choose the functions using the Hydra config
-            net_generator: NetGenerator = get_net_mnist
+            net_generator: NetGen = get_net_mnist
             get_client_dataloader, get_federated_dataloader = get_dataloader_generators(
-                cfg.dataset.partition_dir
+                Path(cfg.dataset.partition_dir)
             )
             evaluate_fn: Optional[FedEvalFN] = get_fed_eval_fn_mnist(
-                net_generator, get_federated_dataloader(True, cfg.fed.batch_size)
+                net_generator, get_federated_dataloader(True, cfg.fed.fed_test_config)
             )
 
             on_fit_config_fn: Optional[OnFitConfigFN] = get_on_fit_config_fn_mnist(
-                cfg.client.fit_config
+                cast(dict, OmegaConf.to_container(cfg.client.fit_config))
             )
             on_evaluate_config_fn: Optional[
                 OnEvaluateConfigFN
-            ] = get_on_evaluate_config_fn_mnist(cfg.client.fit_config)
+            ] = get_on_evaluate_config_fn_mnist(
+                cast(dict, OmegaConf.to_container(cfg.client.eval_config))
+            )
+
+            if cfg.fed.load_saved_parameters:
+                parameters_path = (
+                    results_dir / "parameters"
+                    if cfg.fed.use_results_dir
+                    else Path(cfg.fed.parameters_folder)
+                )
+            else:
+                parameters_path = None
+
+            initial_parameters = get_initial_parameters(
+                net_generator,
+                cast(dict, OmegaConf.to_container(cfg.fed.initial_parameters_config)),
+                parameters_path,
+                cfg.fed.parameters_round,
+            )
 
             # 4. Define your strategy
             # pass all relevant argument
             # Fraction_fit and fraction_evaluate are ignored
             # in favour of using absolute numbers via min_fit_clients
-            instantiate(
+            strategy = instantiate(
                 cfg.strategy.init,
                 fraction_fit=sys.float_info.min,
                 fraction_evaluate=sys.float_info.min,
@@ -168,32 +198,53 @@ def main(cfg: DictConfig) -> None:
                 evaluate_metrics_aggregation_fn=get_weighted_avg_metrics_agg_fn(
                     cfg.client.evaluate_metrics
                 ),
+                initial_parameters=initial_parameters,
             )
 
             server = WandbServer(
                 client_manager=client_manager,
                 history=history,
-                strategy=None,
+                strategy=strategy,
                 save_parameters_to_file=save_parameters_to_file,
                 save_files_per_round=save_files_per_round,
             )
 
-            client_generator: ClientGenerator = get_default_client_generator(
-                working_dir=working_dir, net_generator=net_generator
+            client_generator: ClientGen = get_client_generator_mnist(
+                working_dir=working_dir,
+                net_generator=net_generator,
+                dataloader_gen=get_client_dataloader,
+            )
+            seed_everything(cfg.fed.seed)
+
+            test_client(
+                test_all_clients=cfg.test_clients.all,
+                test_one_client=cfg.test_clients.one,
+                client_generator=client_generator,
+                initial_parameters=initial_parameters,
+                total_clients=cfg.fed.num_total_clients,
+                on_fit_config_fn=on_fit_config_fn,
+                on_evaluate_config_fn=on_evaluate_config_fn,
             )
 
             # 5. Start Simulation
-            seed_everything(cfg.fed.seed)
+
             fl.simulation.start_simulation(
                 client_fn=client_generator,
                 num_clients=cfg.fed.num_total_clients,
                 client_resources={
-                    "num_cpus": cfg.fed.cpus_per_client,
-                    "num_gpus": cfg.fed.gpus_per_client,
+                    "num_cpus": int(cfg.fed.cpus_per_client),
+                    "num_gpus": int(cfg.fed.gpus_per_client),
                 },
                 server=server,
                 config=fl.server.ServerConfig(num_rounds=cfg.fed.num_rounds),
-                ray_init_args={"include_dashboard": False},
+                ray_init_args={
+                    "include_dashboard": False,
+                    "address": cfg.ray_address,
+                    "_redis_password": cfg.ray_redis_password,
+                    "_node_ip_address": cfg.ray_node_ip_address,
+                }
+                if cfg.ray_address is not None
+                else {"include_dashboard": False},
             )
 
             histories_dir = working_dir / "histories"
@@ -204,8 +255,8 @@ def main(cfg: DictConfig) -> None:
 
         if run is not None:
             run.save(
-                str((output_directory / "*").resolve()),
-                str((output_directory).resolve()),
+                str((results_dir / "*").resolve()),
+                str((results_dir).resolve()),
                 "now",
             )
             log(
@@ -217,3 +268,8 @@ def main(cfg: DictConfig) -> None:
                     check=True,
                 ),
             )
+    log(logging.INFO, f"{cfg.reuse_output_dir} {original_hydra_dir}")
+
+
+if __name__ == "__main__":
+    out_main = main()

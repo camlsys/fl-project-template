@@ -1,4 +1,5 @@
 # Hydra and wanbd outputs
+data
 outputs/*
 multirun/*
 wandb/*

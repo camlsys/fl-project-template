@@ -8,7 +8,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from project.fed.utils.utils import generic_set_parameters
-from project.typing.common import FedEvalFN, NetGenerator, OnFitConfigFN
+from project.types.common import FedEvalFN, NetGen, OnFitConfigFN
 from project.utils.utils import obtain_device
 
 
@@ -111,7 +111,7 @@ def test(
 
 
 def get_fed_eval_fn(
-    net_generator: NetGenerator, testloader: DataLoader
+    net_generator: NetGen, testloader: DataLoader
 ) -> Optional[FedEvalFN]:
     """Get the federated evaluation function for MNIST.
 

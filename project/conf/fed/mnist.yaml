@@ -1,12 +1,12 @@
 ---
 # Federated setup
-num_rounds: 5
+num_rounds: 1
 num_total_clients: 10
 num_clients_per_round: 2
 num_evaluate_clients_per_round: 2
 
 # Client resources
-cpus_per_client: 1
+cpus_per_client: 10
 gpus_per_client: 0
 
 # Seed for client selection
@@ -15,6 +15,15 @@ seed: 1337
 fed_test_config:
   batch_size: 32
 
+# Settings for loading the initial parameters 
+# used by the server
+load_saved_parameters: true
+parameters_folder: null
+# If reusing an output directory for checkpointing
+use_results_dir: true
+# The round from which to load the parameters
+# if null it will load the most recent round
+parameters_round: null
 initial_parameters_config: {}
 
 # If clients should be sampled with replacement

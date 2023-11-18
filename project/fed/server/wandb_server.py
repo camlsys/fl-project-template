@@ -67,6 +67,10 @@ class WandbServer(Server):
         log(INFO, "FL starting")
         start_time = timeit.default_timer()
 
+        # Save initial parameters and files
+        self.save_parameters_to_file(self.parameters)
+        self.save_files_per_round(0)
+
         for current_round in range(1, num_rounds + 1):
             # Train model and replace previous global model
             res_fit = self.fit_round(
@@ -109,6 +113,7 @@ class WandbServer(Server):
                     history.add_metrics_distributed(
                         server_round=current_round, metrics=evaluate_metrics_fed
                     )
+            # Saver round parameters and files
             self.save_parameters_to_file(self.parameters)
             self.save_files_per_round(current_round)
 

@@ -1,23 +1,22 @@
 ---
 defaults:
   - _self_
-  - client: default
-  - fed: default
+  - client: mnist
+  - fed: mnist
   - strategy: fedavg
   - dataset: mnist
 
 # If running the same experiment multiple times
 # you may wish to save results to the same directory
 # if null, defaults to the hydra dir
-reuse_output_dir: null
-
+reuse_output_dir: /nfs-share/aai30/projects/fl-project-template/outputs/2023-11-17/17-40-17
 # Working dir to save temporary files to
 # If null, defaults to hydra_dir/working
 working_dir: null
 
 # List of file patterns to be saved
 # at the end of training
-to_save_once: [history]
+to_save_once: [history, yaml, log]
 
 # List of file patterns to be saved repeteadly
 to_save_per_round: [parameters]
@@ -26,13 +25,13 @@ save_frequency: 1
 
 # List of flie patterns to be deleted
 # prior to and at the end of training
-to_clean_once: [history, parameters]
+to_clean_once: [history, parameters, yaml, log]
 
 # Control wandb logging
-use_wandb: false
+use_wandb: true
 
 # Test without Ray to enable debugging
-debug:
+test_clients:
   all: false
   one: false
 
@@ -43,3 +42,10 @@ wandb:
     tags: ['strategy_${strategy.name}', 'seed_${fed.seed}']
     entity: null
     mode: online
+
+# For Ray cluster usage
+# leave null unless you need 
+# multiple ray instances running
+ray_address: null
+ray_redis_password: null
+ray_node_ip_address: null

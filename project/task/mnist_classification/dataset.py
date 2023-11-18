@@ -2,20 +2,20 @@
 
 
 from pathlib import Path
-from typing import Callable, Dict, Tuple
+from typing import Dict, Tuple
 
 import torch
 from torch.utils.data import DataLoader
 
+from project.types.common import ClientDataloaderGen, FedDataloaderGen
+
 
 def get_dataloader_generators(
     partition_dir: Path,
-) -> Tuple[
-    Callable[[str | int, bool, Dict], DataLoader], Callable[[bool, int], DataLoader]
-]:
+) -> Tuple[ClientDataloaderGen, FedDataloaderGen]:
     """Return a function that loads a client's dataset."""
 
-    def get_client_dataloader(cid: str | int, test: bool, cfg: Dict) -> DataLoader:
+    def get_client_dataloader(cid: str | int, test: bool, config: Dict) -> DataLoader:
         """Return a DataLoader for a client's dataset.
 
         Parameters
@@ -37,10 +37,9 @@ def get_dataloader_generators(
             dataset = torch.load(client_dir / "train.pt")
         else:
             dataset = torch.load(client_dir / "test.pt")
+        return DataLoader(dataset, batch_size=config["batch_size"], shuffle=not test)
 
-        return DataLoader(dataset, batch_size=cfg["batch_size"], shuffle=not test)
-
-    def get_federated_dataloader(test: bool, batch_size: int) -> DataLoader:
+    def get_federated_dataloader(test: bool, config: Dict) -> DataLoader:
         """Return a DataLoader for federated train/test sets.
 
         Parameters
@@ -58,13 +57,13 @@ def get_dataloader_generators(
         if not test:
             return DataLoader(
                 torch.load(partition_dir / "train.pt"),
-                batch_size=batch_size,
+                batch_size=config["batch_size"],
                 shuffle=not test,
             )
         else:
             return DataLoader(
                 torch.load(partition_dir / "test.pt"),
-                batch_size=batch_size,
+                batch_size=config["batch_size"],
                 shuffle=not test,
             )
 

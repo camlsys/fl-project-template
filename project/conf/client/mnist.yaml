@@ -13,5 +13,5 @@ eval_config:
   batch_size: 4
 
 # The names of metrics you wish to aggregate
-fit_metrics: []
-evaluate_metrics: []
+fit_metrics: [train_loss]
+evaluate_metrics: [test_accuracy]

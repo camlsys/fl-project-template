@@ -46,7 +46,7 @@ class DeterministicClientManager(SimpleClientManager):
         # Shuffle the list of clients
 
         available_cids = []
-        if num_clients < len(cids):
+        if num_clients <= len(cids):
             available_cids = self.rng.sample(cids, num_clients)
         elif self.enable_resampling:
             available_cids = self.rng.choices(cids, k=num_clients)
@@ -55,7 +55,7 @@ class DeterministicClientManager(SimpleClientManager):
                 logging.INFO,
                 "Sampling failed: number of available clients"
                 " (%s) is less than number of requested clients (%s).",
-                len(available_cids),
+                len(cids),
                 num_clients,
             )
             available_cids = []

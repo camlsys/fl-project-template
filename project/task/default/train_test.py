@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from project.typing.common import FedEvalFN, OnEvaluateConfigFN, OnFitConfigFN
+from project.types.common import FedEvalFN, OnEvaluateConfigFN, OnFitConfigFN
 
 
 def get_fed_eval_fn() -> Optional[FedEvalFN]:
