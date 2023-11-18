@@ -1,17 +1,20 @@
 ---
 # This generator is never used by default
 # use it if you need to change the client
-get_client_generator:
-  _target_: project.client.client.get_client_generator
+# get_client_generator:
+#   _target_: project.client.client.get_client_generator
 
-fit_config:
-  batch_size: 4
-  epochs: 1
-  learning_rate: 0.03
+# Client fit config
+# fit_config:
+#   batch_size: 4
+#   epochs: 1
+#   learning_rate: 0.03
 
-eval_config:
-  batch_size: 4
+# Client eval config
+# eval_config:
+#   batch_size: 4
 
 # The names of metrics you wish to aggregate
+# E.g., train_loss, test_accuracy
 fit_metrics: []
 evaluate_metrics: []

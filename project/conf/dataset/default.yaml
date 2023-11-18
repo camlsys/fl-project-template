@@ -1,8 +1,2 @@
----
-dataset_dir: ./data/mnist/data
-partition_dir: ./data/mnist/partition
-
-num_clients: 10
-val_ratio: 0.1
-
-seed: 1337
+--- null
+...
