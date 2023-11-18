@@ -3,7 +3,6 @@
 Generic utilities.
 """
 
-
 import logging
 import random
 import re

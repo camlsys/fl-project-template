@@ -4,10 +4,6 @@ VPOETRY_HOME=""
 VPYENV_ROOT=""
 VPYTHON_VERSION="3.11.6"
 
-
-
-
-
 if [ -z "$(command -v poetry)" ]; then
 
   if [ -z "$VPOETRY_HOME" ]; then
@@ -66,4 +62,4 @@ poetry install
 
 poetry run pre-commit install 
 
-poetry run pre-commit run --all-files
+poetry run pre-commit run --all-files --hook-stage push
