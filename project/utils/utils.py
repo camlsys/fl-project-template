@@ -9,7 +9,7 @@ import re
 import shutil
 from itertools import chain
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, Iterator, List, Optional, cast
 
 import numpy as np
 import ray
@@ -198,7 +198,9 @@ def get_checkpoint_index(output_dir: Path, file_limit: Optional[int]) -> int:
     int
         The index of the next checkpoint.
     """
-    same_name_files = chain(output_dir.glob("*_*"), output_dir.glob("*/*_*"))
+    same_name_files = cast(
+        Iterator[Path], chain(output_dir.glob("*_*"), output_dir.glob("*/*_*"))
+    )
 
     same_name_files = (
         same_name_files

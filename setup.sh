@@ -60,6 +60,8 @@ poetry env use $VPYTHON_VERSION
 
 poetry install
 
+# Install pre-commit hooks
 poetry run pre-commit install 
 
+# Command to run all pre-commit hooks
 poetry run pre-commit run --all-files --hook-stage push
