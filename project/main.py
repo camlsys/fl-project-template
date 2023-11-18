@@ -55,7 +55,6 @@ from project.types.common import (
 from project.utils.utils import (
     FileSystemManager,
     RayContextManager,
-    get_save_files_every_round,
     seed_everything,
     wandb_init,
 )
@@ -125,20 +124,23 @@ def main(cfg: DictConfig) -> None:
             to_save_once=cfg.to_save_once,
             original_hydra_dir=original_hydra_dir,
             reuse_output_dir=cfg.reuse_output_dir,
-        ) as _fs_manager, RayContextManager() as _ray_manager:
+            file_limit=cfg.file_limit,
+        ) as fs_manager, RayContextManager() as _ray_manager:
             # Which files to save every <to_save_per_round> rounds
             # e.g model checkpoints
-            save_files_per_round = get_save_files_every_round(
-                working_dir,
-                results_dir,
+            save_files_per_round = fs_manager.get_save_files_every_round(
                 cfg.to_save_per_round,
                 cfg.save_frequency,
             )
 
+            # For checkpointed runs, adjust the seed
+            # so different clients are sampled
+            adjusted_seed = cfg.fed.seed + fs_manager.checkpoint_index
+
             save_parameters_to_file = get_save_parameters_to_file(working_dir)
 
             client_manager = DeterministicClientManager(
-                cfg.fed.seed, cfg.fed.enable_resampling
+                adjusted_seed, cfg.fed.enable_resampling
             )
             history = WandbHistory(cfg.use_wandb)
 
@@ -214,7 +216,7 @@ def main(cfg: DictConfig) -> None:
                 net_generator=net_generator,
                 dataloader_gen=get_client_dataloader,
             )
-            seed_everything(cfg.fed.seed)
+            seed_everything(adjusted_seed)
 
             test_client(
                 test_all_clients=cfg.test_clients.all,

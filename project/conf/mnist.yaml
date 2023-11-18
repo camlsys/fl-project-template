@@ -9,7 +9,7 @@ defaults:
 # If running the same experiment multiple times
 # you may wish to save results to the same directory
 # if null, defaults to the hydra dir
-reuse_output_dir: /nfs-share/aai30/projects/fl-project-template/outputs/2023-11-17/17-40-17
+reuse_output_dir: /nfs-share/aai30/projects/fl-project-template/outputs/2023-11-18/18-32-04
 # Working dir to save temporary files to
 # If null, defaults to hydra_dir/working
 working_dir: null
@@ -49,3 +49,10 @@ wandb:
 ray_address: null
 ray_redis_password: null
 ray_node_ip_address: null
+
+# When using checkpointing
+# automatically detect the most recent checkpoint
+# checks at most file_limit files up to depth 2
+# from the results directory
+# if null checks all files 
+file_limit: null

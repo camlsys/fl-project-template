@@ -50,3 +50,10 @@ wandb:
 ray_address: null
 ray_redis_password: null
 ray_node_ip_address: null
+
+# When using checkpointing
+# automatically detect the most recent checkpoint
+# checks at most file_limit files up to depth 2
+# from the results directory
+# if null checks all files 
+file_limit: null

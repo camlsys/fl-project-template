@@ -8,6 +8,7 @@ import random
 import re
 import shutil
 from functools import wraps
+from itertools import chain
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
@@ -105,11 +106,44 @@ def cleanup(working_dir: Path, to_clean: List[str]) -> None:
         cleanup(child, to_clean)
 
 
+def get_checkpoint_index(output_dir: Path, file_limit: Optional[int]) -> int:
+    """Get the index of the next checkpoint.
+
+    Parameters
+    ----------
+    output_dir : Path
+        The output directory.
+        file_limit : Optional[int]
+        The maximal number of files to search.
+        If None, then there is no limit.
+
+    Returns
+    -------
+        int
+        The index of the next checkpoint.
+    """
+    same_name_files = chain(output_dir.glob("*_*"), output_dir.glob("*/*_*"))
+
+    same_name_files = (
+        same_name_files
+        if file_limit is None
+        else (next(same_name_files) for _ in range(file_limit))
+    )
+
+    indicies = (
+        int(v.group(1))
+        for f in same_name_files
+        if (v := re.search(r"_([0-9]+)", f.stem))
+    )
+
+    return max(indicies, default=-1) + 1
+
+
 def save_files(
     working_dir: Path,
     output_dir: Path,
     to_save: List[str],
-    highest_index_map: Dict[Tuple[Path, str, str], int],
+    checkpoint_index: int,
     ending: Optional[int] = None,
     top_level: bool = True,
 ) -> None:
@@ -123,22 +157,10 @@ def save_files(
             for save_token in to_save:
                 if save_token in file.name:
                     if file.exists():
-                        key = (working_dir, file.stem, file.suffix)
-                        same_name_files = list(
-                            output_dir.glob(f"{file.stem}_*{file.suffix}")
-                        )
-                        if key not in highest_index_map:
-                            indices = [
-                                int(v.group(1))
-                                for f in same_name_files
-                                if (v := re.search(r"_([0-9]+)", f.stem))
-                            ]
-                            highest_index_map[key] = max(indices) + 1 if indices else 0
-
                         true_ending = (
-                            f"{highest_index_map[key]}" + ("_" + str(ending))
+                            f"{checkpoint_index}" + ("_" + str(ending))
                             if ending is not None
-                            else f"{highest_index_map[key]}"
+                            else f"{checkpoint_index}"
                         )
                         destination_file = (
                             output_dir
@@ -158,30 +180,8 @@ def save_files(
             to_save=to_save,
             ending=ending,
             top_level=False,
-            highest_index_map=highest_index_map,
+            checkpoint_index=checkpoint_index,
         )
-
-
-def get_save_files_every_round(
-    working_dir: Path,
-    output_dir: Path,
-    to_save: List[str],
-    save_frequency: int,
-) -> Callable[[int], None]:
-    """Get a function that saves files every save_frequency rounds."""
-    highest_index_map: Dict[Tuple[Path, str, str], int] = {}
-
-    def save_files_round(cur_round: int) -> None:
-        if cur_round % save_frequency == 0:
-            save_files(
-                working_dir,
-                output_dir,
-                to_save=to_save,
-                ending=cur_round,
-                highest_index_map=highest_index_map,
-            )
-
-    return save_files_round
 
 
 class FileSystemManager:
@@ -195,6 +195,7 @@ class FileSystemManager:
         to_save_once: List[str],
         original_hydra_dir: Path,
         reuse_output_dir: bool,
+        file_limit: Optional[int] = None,
     ) -> None:
         self.to_clean_once = to_clean_once
         self.working_dir = working_dir
@@ -202,6 +203,26 @@ class FileSystemManager:
         self.to_save_once = to_save_once
         self.original_hydra_dir = original_hydra_dir
         self.reuse_output_dir = reuse_output_dir
+        self.checkpoint_index = get_checkpoint_index(self.output_dir, file_limit)
+
+    def get_save_files_every_round(
+        self,
+        to_save: List[str],
+        save_frequency: int,
+    ) -> Callable[[int], None]:
+        """Get a function that saves files every save_frequency rounds."""
+
+        def save_files_round(cur_round: int) -> None:
+            if cur_round % save_frequency == 0:
+                save_files(
+                    self.working_dir,
+                    self.output_dir,
+                    to_save=to_save,
+                    ending=cur_round,
+                    checkpoint_index=self.checkpoint_index,
+                )
+
+        return save_files_round
 
     def __enter__(self):
         """Initialize the context manager and cleanup."""
@@ -232,7 +253,7 @@ class FileSystemManager:
             self.working_dir,
             self.output_dir,
             to_save=self.to_save_once,
-            highest_index_map={},
+            checkpoint_index=self.checkpoint_index,
         )
         log(logging.INFO, f"Post-cleaning {self.to_clean_once}")
         cleanup(self.working_dir, to_clean=self.to_clean_once)
