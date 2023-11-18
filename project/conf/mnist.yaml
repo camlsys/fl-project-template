@@ -10,6 +10,7 @@ defaults:
 # you may wish to save results to the same directory
 # if null, defaults to the hydra dir
 reuse_output_dir: /nfs-share/aai30/projects/fl-project-template/outputs/2023-11-18/18-32-04
+
 # Working dir to save temporary files to
 # If null, defaults to hydra_dir/working
 working_dir: null
@@ -20,6 +21,7 @@ to_save_once: [history, yaml, log]
 
 # List of file patterns to be saved repeteadly
 to_save_per_round: [parameters]
+
 # The frequency with which they should be saved
 save_frequency: 1
 
@@ -36,6 +38,8 @@ test_clients:
   one: false
 
 # Wandb configuration
+# add whatever tags you like
+# change the name
 wandb:
   setup:
     project: template

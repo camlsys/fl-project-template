@@ -1,6 +1,5 @@
 """MNIST dataset utilities for federated learning."""
 
-
 from pathlib import Path
 from typing import Dict, Tuple
 
@@ -13,7 +12,21 @@ from project.types.common import ClientDataloaderGen, FedDataloaderGen
 def get_dataloader_generators(
     partition_dir: Path,
 ) -> Tuple[ClientDataloaderGen, FedDataloaderGen]:
-    """Return a function that loads a client's dataset."""
+    """Return a function that loads a client's dataset.
+
+    Parameters
+    ----------
+    partition_dir : Path
+        The path to the partition directory.
+        Containing the training data of clients.
+        Partitioned by client id.
+
+    Returns
+    -------
+    Tuple[ClientDataloaderGen, FedDataloaderGen]
+        A tuple of functions that return a DataLoader for a client's dataset
+        and a DataLoader for the federated dataset.
+    """
 
     def get_client_dataloader(cid: str | int, test: bool, config: Dict) -> DataLoader:
         """Return a DataLoader for a client's dataset.

@@ -1,11 +1,29 @@
 ---
+# Where to store data
 dataset_dir: ./data/mnist/data
+
+# Folder of client folders
+# indexed by id, containing train and test
+# data in .pt format
 partition_dir: ./data/mnist/partition
 
+# How many clients to create
 num_clients: 10
+
+# How large should the test set of each client
+# be relative to the train set
 val_ratio: 0.1
 
+# Seed for partition generation
 seed: 1337
+
+# If the partition labels 
+# should be independent and identically distributed
 iid: false
+
+# If the partition labels should follow a power law
+# distribution
 power_law: true
+
+# If the partition labels should be balanced
 balance: false

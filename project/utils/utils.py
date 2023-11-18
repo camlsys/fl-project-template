@@ -7,10 +7,9 @@ import logging
 import random
 import re
 import shutil
-from functools import wraps
 from itertools import chain
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import ray
@@ -21,7 +20,13 @@ import wandb
 
 
 def obtain_device() -> torch.device:
-    """Get the device (CPU or GPU) for torch."""
+    """Get the device (CPU or GPU) for torch.
+
+    Returns
+    -------
+    torch.device
+        The device.
+    """
     return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
@@ -29,6 +34,16 @@ def lazy_wrapper(x: Callable) -> Callable[[], Any]:
     """Wrap a value in a function that returns the value.
 
     For easy instantion through hydra.
+
+    Parameters
+    ----------
+    x : Callable
+        The value to wrap.
+
+    Returns
+    -------
+    Callable[[], Any]
+        The wrapped value.
     """
     return lambda: x
 
@@ -37,12 +52,32 @@ def lazy_config_wrapper(x: Callable) -> Callable[[Dict], Any]:
     """Wrap a value in a function that returns the value given a config.
 
     For easy instantion through hydra.
+
+    Parameters
+    ----------
+    x : Callable
+        The value to wrap.
+
+    Returns
+    -------
+    Callable[[Dict], Any]
+        The wrapped value.
     """
     return lambda _config: x()
 
 
 def seed_everything(seed: int) -> None:
-    """Seed everything for reproducibility."""
+    """Seed everything for reproducibility.
+
+    Parameters
+    ----------
+    seed : int
+        The seed.
+
+    Returns
+    -------
+        None
+    """
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -60,7 +95,22 @@ class NoOpContextManager:
 
 
 def wandb_init(wandb_enabled: bool, *args, **kwargs):
-    """Initialize wandb if enabled."""
+    """Initialize wandb if enabled.
+
+    Parameters
+    ----------
+    wandb_enabled : bool
+        Whether wandb is enabled.
+    *args : Any
+        The arguments to pass to wandb.init.
+    **kwargs : Any
+        The keyword arguments to pass to wandb.init.
+
+    Returns
+    -------
+    Optional[Union[NoOpContextManager, Any]]
+        The wandb context manager if enabled, otherwise a no-op context manager
+    """
     if wandb_enabled:
         return wandb.init(*args, **kwargs)
 
@@ -74,8 +124,22 @@ class RayContextManager:
         """Initialize the context manager."""
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
-        """Cleanup the files."""
+    def __exit__(self, _exc_type, _exc_value, _traceback) -> None:
+        """Cleanup the files.
+
+        Parameters
+        ----------
+        _exc_type : Any
+            The exception type.
+        _exc_value : Any
+            The exception value.
+        _traceback : Any
+            The traceback.
+
+        Returns
+        -------
+        None
+        """
         if ray.is_initialized():
             temp_dir = Path(
                 ray.worker._global_node.get_session_dir_path()  # type: ignore
@@ -90,7 +154,19 @@ class RayContextManager:
 
 
 def cleanup(working_dir: Path, to_clean: List[str]) -> None:
-    """Cleanup the files in the working dir."""
+    """Cleanup the files in the working dir.
+
+    Parameters
+    ----------
+    working_dir : Path
+        The working directory.
+    to_clean : List[str]
+        The tokens to clean.
+
+    Returns
+    -------
+        None
+    """
     children: List[Path] = []
     for file in working_dir.iterdir():
         if file.is_file():
@@ -113,13 +189,13 @@ def get_checkpoint_index(output_dir: Path, file_limit: Optional[int]) -> int:
     ----------
     output_dir : Path
         The output directory.
-        file_limit : Optional[int]
+    file_limit : Optional[int]
         The maximal number of files to search.
         If None, then there is no limit.
 
     Returns
     -------
-        int
+    int
         The index of the next checkpoint.
     """
     same_name_files = chain(output_dir.glob("*_*"), output_dir.glob("*/*_*"))
@@ -147,7 +223,19 @@ def save_files(
     ending: Optional[int] = None,
     top_level: bool = True,
 ) -> None:
-    """Save the files in the working dir."""
+    """Save the files in the working dir.
+
+    Parameters
+    ----------
+    working_dir : Path
+        The working directory.
+    output_dir : Path
+        The output directory.
+
+    Returns
+    -------
+        None
+    """
     if not top_level:
         output_dir = output_dir / working_dir.name
 
@@ -197,6 +285,31 @@ class FileSystemManager:
         reuse_output_dir: bool,
         file_limit: Optional[int] = None,
     ) -> None:
+        """Initialize the context manager.
+
+        Parameters
+        ----------
+        working_dir : Path
+            The working directory.
+        output_dir : Path
+            The output directory.
+        to_clean_once : List[str]
+            The tokens to clean once.
+        to_save_once : List[str]
+            The tokens to save once.
+        original_hydra_dir : Path
+            The original hydra directory.
+            For copying the hydra directory to the working directory.
+        reuse_output_dir : bool
+            Whether to reuse the output directory.
+        file_limit : Optional[int]
+            The maximal number of files to search.
+            If None, then there is no limit.
+
+        Returns
+        -------
+            None
+        """
         self.to_clean_once = to_clean_once
         self.working_dir = working_dir
         self.output_dir = output_dir
@@ -210,7 +323,20 @@ class FileSystemManager:
         to_save: List[str],
         save_frequency: int,
     ) -> Callable[[int], None]:
-        """Get a function that saves files every save_frequency rounds."""
+        """Get a function that saves files every save_frequency rounds.
+
+        Parameters
+        ----------
+        to_save : List[str]
+            The tokens to save.
+        save_frequency : int
+            The frequency to save.
+
+        Returns
+        -------
+        Callable[[int], None]
+            The function that saves the files.
+        """
 
         def save_files_round(cur_round: int) -> None:
             if cur_round % save_frequency == 0:
@@ -257,30 +383,3 @@ class FileSystemManager:
         )
         log(logging.INFO, f"Post-cleaning {self.to_clean_once}")
         cleanup(self.working_dir, to_clean=self.to_clean_once)
-
-
-def get_parameter_convertor(
-    convertors: Iterable[Tuple[Any, Callable]]
-) -> Callable[[Callable], Callable]:
-    """Get a decorator that converts parameters to the right type."""
-
-    def convert(param: Any) -> bool:
-        for param_type, convertor in convertors:
-            if isinstance(param, param_type):
-                return convertor(param)
-        return param
-
-    def convert_params(func: Callable) -> Callable:
-        @wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
-            new_args = []
-            new_kwargs = {}
-            for arg in args:
-                new_args.append(convert(arg))
-            for kwarg_name, kwarg_value in kwargs.items():
-                new_kwargs[kwarg_name] = convert(kwarg_value)
-            return func(*new_args, **new_kwargs)
-
-        return wrapper
-
-    return convert_params

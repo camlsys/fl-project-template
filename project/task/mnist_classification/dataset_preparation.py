@@ -1,4 +1,4 @@
-"""Functions for dataset download and processing."""
+"""Functions for MNIST download and processing."""
 import logging
 from pathlib import Path
 from typing import List, Sequence, Sized, Tuple, cast

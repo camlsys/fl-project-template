@@ -1,4 +1,4 @@
-"""Default training and testing functions, local and federated."""
+"""MNIST training and testing functions, local and federated."""
 
 from typing import Dict, Optional, Sized, Tuple, cast
 
@@ -71,7 +71,7 @@ def train(  # pylint: disable=too-many-arguments
 def test(
     net: nn.Module, testloader: DataLoader, device: torch.device
 ) -> Tuple[float, int, Dict]:
-    """Evaluate the network on the entire test set.
+    """Evaluate the network on the test set.
 
     Parameters
     ----------
@@ -119,12 +119,12 @@ def get_fed_eval_fn(
     ----------
     net_generator : NetGenerator
         The function to generate the network.
-        testloader : DataLoader
+    testloader : DataLoader
         The DataLoader containing the data to test the network on.
 
     Returns
     -------
-        Optional[FedEvalFN]
+    Optional[FedEvalFN]
         The evaluation function for the server
         if the testloader is not empty, else None.
     """
@@ -132,7 +132,7 @@ def get_fed_eval_fn(
         return None
 
     def fed_eval_fn(
-        server_round: int, parameters: NDArrays, config: Dict
+        _server_round: int, parameters: NDArrays, config: Dict
     ) -> Optional[Tuple[float, Dict]]:
         """Evaluate the model on the given data.
 
@@ -162,12 +162,35 @@ def get_fed_eval_fn(
 
 
 def get_on_fit_config_fn(fit_config: Dict) -> Optional[OnFitConfigFN]:
-    """Define your on_fit_config_fn here.
+    """MNIST on_fit_config_fn generator.
 
-    Set all necessary parameters using the closure.
+    Parameters
+    ----------
+    fit_config : Dict
+        The configuration for the fit function.
+        Loaded dynamically from the config file.
+
+    Returns
+    -------
+    Optional[OnFitConfigFN]
+        The on_fit_config_fn for the server if the fit_config is not empty, else None.
     """
 
-    def fit_config_fn(server_round: int):
+    def fit_config_fn(server_round: int) -> Dict:
+        """MNIST on_fit_config_fn.
+
+        Parameters
+        ----------
+        server_round : int
+            The current server round.
+            Passed to the client
+
+        Returns
+        -------
+        Dict
+            The configuration for the fit function.
+            Loaded dynamically from the config file.
+        """
         # resolve and convert to python dict
         fit_config["curr_round"] = server_round  # add round info
         return fit_config
@@ -175,4 +198,6 @@ def get_on_fit_config_fn(fit_config: Dict) -> Optional[OnFitConfigFN]:
     return fit_config_fn
 
 
+# Differences between the two will come
+# from the config file
 get_on_evaluate_config_fn = get_on_fit_config_fn

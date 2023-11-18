@@ -22,6 +22,19 @@ class DeterministicClientManager(SimpleClientManager):
         seed: int,
         enable_resampling: bool = False,
     ) -> None:
+        """Initialize DeterministicClientManager.
+
+        Parameters
+        ----------
+        seed : int
+            The seed to use for deterministic sampling.
+        enable_resampling : bool
+            Whether to allow sampling with replacement.
+
+        Returns
+        -------
+        None
+        """
         super().__init__()
         self.seed = seed
         self.rng = random.Random(seed)
@@ -33,7 +46,25 @@ class DeterministicClientManager(SimpleClientManager):
         min_num_clients: Optional[int] = None,
         criterion: Optional[Criterion] = None,
     ) -> List[ClientProxy]:
-        """Sample a number of Flower ClientProxy instances."""
+        """Sample a number of Flower ClientProxy instances.
+
+        Guarantees deterministic client sampling and enables
+        sampling with replacement.
+
+        Parameters
+        ----------
+        num_clients : int
+            The number of clients to sample.
+        min_num_clients : Optional[int]
+            The minimum number of clients to sample.
+        criterion : Optional[Criterion]
+            A criterion to select clients.
+
+        Returns
+        -------
+        List[ClientProxy]
+            A list of sampled clients.
+        """
         # Block until at least num_clients are connected.
         if min_num_clients is None:
             min_num_clients = num_clients

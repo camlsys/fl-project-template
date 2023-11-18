@@ -1,28 +1,14 @@
 """Flower server accounting for Weights&Biases+file saving."""
 import timeit
 from logging import INFO
-from typing import Callable, List, Optional, Tuple, Union
+from typing import Callable, Optional
 
-from flwr.common import DisconnectRes, EvaluateRes, FitRes, Parameters
+from flwr.common import Parameters
 from flwr.common.logger import log
 from flwr.server import Server
 from flwr.server.client_manager import ClientManager
-from flwr.server.client_proxy import ClientProxy
 from flwr.server.history import History
 from flwr.server.strategy import Strategy
-
-FitResultsAndFailures = Tuple[
-    List[Tuple[ClientProxy, FitRes]],
-    List[Union[Tuple[ClientProxy, FitRes], BaseException]],
-]
-EvaluateResultsAndFailures = Tuple[
-    List[Tuple[ClientProxy, EvaluateRes]],
-    List[Union[Tuple[ClientProxy, EvaluateRes], BaseException]],
-]
-ReconnectResultsAndFailures = Tuple[
-    List[Tuple[ClientProxy, DisconnectRes]],
-    List[Union[Tuple[ClientProxy, DisconnectRes], BaseException]],
-]
 
 
 class WandbServer(Server):
@@ -37,6 +23,25 @@ class WandbServer(Server):
         save_parameters_to_file: Callable[[Parameters], None],
         save_files_per_round: Callable[[int], None],
     ) -> None:
+        """Flower server implementation.
+
+        Parameters
+        ----------
+        client_manager : ClientManager
+            Client manager implementation.
+        strategy : Optional[Strategy]
+            Strategy implementation.
+        history : Optional[History]
+            History implementation.
+        save_parameters_to_file : Callable[[Parameters], None]
+            Function to save the parameters to file.
+        save_files_per_round : Callable[[int], None]
+            Function to save files every round.
+
+        Returns
+        -------
+        None
+        """
         super().__init__(client_manager=client_manager, strategy=strategy)
 
         self.history: Optional[History] = history
@@ -45,7 +50,21 @@ class WandbServer(Server):
 
     # pylint: disable=too-many-locals
     def fit(self, num_rounds: int, timeout: Optional[float]) -> History:
-        """Run federated averaging for a number of rounds."""
+        """Run federated averaging for a number of rounds.
+
+        Parameters
+        ----------
+        num_rounds : int
+            The number of rounds to run.
+        timeout : Optional[float]
+            Timeout in seconds.
+
+        Returns
+        -------
+        History
+            The history of the training.
+            Potentially using a pre-defined history.
+        """
         history = self.history if self.history is not None else History()
 
         # Initialize parameters

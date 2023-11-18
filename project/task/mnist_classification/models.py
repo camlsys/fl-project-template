@@ -1,10 +1,10 @@
 """CNN model architecture, training, and testing functions for MNIST."""
 
-
 import torch
 import torch.nn.functional as F
 from torch import nn
 
+from project.types.common import NetGen
 from project.utils.utils import lazy_config_wrapper
 
 
@@ -18,6 +18,17 @@ class Net(nn.Module):
     """
 
     def __init__(self, num_classes: int = 10) -> None:
+        """Initialize the network.
+
+        Parameters
+        ----------
+        num_classes : int
+            Number of classes in the dataset.
+
+        Returns
+        -------
+        None
+        """
         super().__init__()
         self.conv1 = nn.Conv2d(1, 32, 5, padding=1)
         self.conv2 = nn.Conv2d(32, 64, 5, padding=1)
@@ -48,7 +59,8 @@ class Net(nn.Module):
         return output_tensor
 
 
-get_net = lazy_config_wrapper(Net)
+# Simple wrapper to match the NetGenerator Interface
+get_net: NetGen = lazy_config_wrapper(Net)
 
 
 class LogisticRegression(nn.Module):
@@ -62,6 +74,17 @@ class LogisticRegression(nn.Module):
     """
 
     def __init__(self, num_classes: int = 10) -> None:
+        """Initialize the network.
+
+        Parameters
+        ----------
+        num_classes : int
+            Number of classes in the dataset.
+
+        Returns
+        -------
+        None
+        """
         super().__init__()
         self.linear = nn.Linear(28 * 28, num_classes)
 
@@ -82,4 +105,5 @@ class LogisticRegression(nn.Module):
         return output_tensor
 
 
-get_logistic_regression = lazy_config_wrapper(LogisticRegression)
+# Simple wrapper to match the NetGenerator Interface
+get_logistic_regression: NetGen = lazy_config_wrapper(LogisticRegression)

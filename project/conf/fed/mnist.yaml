@@ -19,8 +19,10 @@ fed_test_config:
 # used by the server
 load_saved_parameters: true
 parameters_folder: null
+
 # If reusing an output directory for checkpointing
 use_results_dir: true
+
 # The round from which to load the parameters
 # if null it will load the most recent round
 parameters_round: null
