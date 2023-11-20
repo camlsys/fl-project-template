@@ -1,1 +1,0 @@
-{"rule":"PASSIVE_VOICE","sentence":"^\\QThis template is meant to standardise the FL research workflow at the Cambridge ML Systems based on three frameworks chosen for their flexibility and ease of use:\nFlower: FL framework developed by Flower Labs with contributions from CaMLSys members.\\E$"}

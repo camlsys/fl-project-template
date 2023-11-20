@@ -1,5 +1,6 @@
 # Hydra and wanbd outputs
 data
+.vscode
 outputs/*
 multirun/*
 wandb/*
