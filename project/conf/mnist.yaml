@@ -9,7 +9,7 @@ defaults:
 # If running the same experiment multiple times
 # you may wish to save results to the same directory
 # if null, defaults to the hydra dir
-reuse_output_dir: /nfs-share/aai30/projects/fl-project-template/outputs/2023-11-20/13-41-57
+reuse_output_dir: null
 
 # Working dir to save temporary files to
 # If null, defaults to hydra_dir/working

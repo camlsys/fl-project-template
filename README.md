@@ -1,87 +1,121 @@
----
-title: title of the paper
-url: URL to the paper page (not the pdf)
-labels: [label1, label2] # please add between 4 and 10 single-word (maybe two-words) labels (e.g. "system heterogeneity", "image classification", "asynchronous", "weight sharing", "cross-silo")
-dataset: [dataset1, dataset2] # list of datasets you include in your baseline
----
 
-# :warning:*_Title of your baseline_*
+# [CaMLSys](https://mlsys.cst.cam.ac.uk/) Federated Learning Research Template using [Flower](https://github.com/adap/flower), [Hydra](https://github.com/facebookresearch/hydra) and [Wandb](https://wandb.ai/site)
 
-> Note: If you use this baseline in your work, please remember to cite the original authors of the paper as well as the Flower paper.
+> Note: If you use this template in your work, please reference it and cite the [Flower](https://arxiv.org/abs/2007.14390) paper.
 
-> :warning: This is the template to follow when creating a new Flower Baseline. Please follow the instructions in `EXTENDED_README.md`
+> :warning: This readme describes how to use the template as-is after installing it with the default `setup.sh` script in a machine running Ubuntu `22.04`. Please follow the instructions in `EXTENDED_README.md` for details on more complex environment setups and how to extend this template.
 
-> :warning: Please follow the instructions carefully. You can see the [FedProx-MNIST baseline](https://github.com/adap/flower/tree/main/baselines/fedprox) as an example of a baseline that followed this guide.
+## About this Template
 
-> :warning: Please complete the metadata section at the very top of this README. This generates a table at the top of the file that will facilitate indexing baselines.
-
-****Paper:**** :warning: *_add the URL of the paper page (not to the .pdf). For instance if you link a paper on ArXiv, add here the URL to the abstract page (e.g. https://arxiv.org/abs/1512.03385). If your paper is in from a journal or conference proceedings, please follow the same logic._*
-
-****Authors:**** :warning: *_list authors of the paper_*
-
-****Abstract:**** :warning: *_add here the abstract of the paper you are implementing_*
+Federated Learning (FL) is a privacy-preserving machine learning paradigm which allows training models directly on local client data using local client resources. This template is meant to standardise the FL research workflow at the [Cambridge ML Systems](https://mlsys.cst.cam.ac.uk/) based on three frameworks chosen for their flexibility and ease of use:
+ - [Flower](https://github.com/adap/flower): FL framework developed by [Flower Labs](https://flower.dev/) with contributions from [CaMLSys](https://mlsys.cst.cam.ac.uk/) members. 
+ - [Hydra](https://github.com/facebookresearch/hydra): framework for managing experiments developed at Meta which automatically handles experimental configuration for Python.
+ - [Wandb](https://wandb.ai/site): MLOps platform handling results storage, experiment tracking, reproduceability and visualisation.
 
 
-## About this baseline
+While these tools can be combined in an ad-hoc manner, this template indends to provide a unified and opinionated structure for achieving this while providing functionality which may not have been easily constructed from scratch. 
 
-****What’s implemented:**** :warning: *_Concisely describe what experiment(s) in the publication can be replicated by running the code. Please only use a few sentences. Start with: “The code in this directory …”_*
+### What this template does:
+ - Automatically handles client configuration for Flower in a opinionated manner using the [PyTorch](https://github.com/pytorch/pytorch) library. This is meant to reduce the task of FL simulation to the mere implementation of standard ML tasks combined with minimal configuration work. Specifically, clients are treated uniformly except for their data, model and configuration.
+    - A user only needs to provide:
+        - A means of generating a model (e.g., a function which returns a PyTorch model) based on a received configuration (e.g., a Dict)
+        - A means of constructing train and test dataloaders
+        - A means of offering a configuration to these components
+    - All data loading or model training is delayed as much as possible to facilitate creating many clients and keeping them in memory with the smallest footprint possible.
+    - Metric collection and aggregation requires no additional implementation. 
+- Automatically handles logging, saving and checkpointing which integrate natively and seamlessly with Wandb and Hydra. Thus enabling many sequential re-launches of the same job on clusters using time-limited schedulers.
+- Provides deterministic seeded client selection while taking into account the current checkpoint. 
+- Provides a type-safe means of selecting which ML task to run using Hydra's config system without the drawbacks of the untyped mechanism provided by Hydra.
+- Enforces good coding standards by default using isort, black, docformatter, ruff and mypy integrated with [pre-commit](https://pre-commit.com/). [Pydantic](https://docs.pydantic.dev/latest/) is used to validate configuration data for generating models, creating dataloaders, training clients e.t.c.
 
-****Datasets:**** :warning: *_List the datasets you used (if you used a medium to large dataset, >10GB please also include the sizes of the dataset)._*
+### What this template does not do:
+- Provide off-the-shelf implementations of FL algorithms, ML tasks, datasets or models beyond the MNIST example. For such functionality please refer to the original [Flower](https://github.com/adap/flower) and [PyTorch](https://github.com/pytorch/pytorch).
+- Provide a means of running experiments on clusters as this greatly depends on the cluster configuration.
 
-****Hardware Setup:**** :warning: *_Give some details about the hardware (e.g. a server with 8x V100 32GB and 256GB of RAM) you used to run the experiments for this baseline. Someone out there might not have access to the same resources you have so, could list the absolute minimum hardware needed to run the experiment in a reasonable amount of time ? (e.g. minimum is 1x 16GB GPU otherwise a client model can’t be trained with a sufficiently large batch size). Could you test this works too?_*
+## Setup
 
-****Contributors:**** :warning: *_let the world know who contributed to this baseline. This could be either your name, your name and affiliation at the time, or your GitHub profile name if you prefer. If multiple contributors signed up for this baseline, please list yourself and your colleagues_*
-
-
-## Experimental Setup
-
-****Task:**** :warning: *_what’s the primary task that is being federated? (e.g. image classification, next-word prediction). If you have experiments for several, please list them_*
-
-****Model:**** :warning: *_provide details about the model you used in your experiments (if more than use a list). If your model is small, describing it as a table would be :100:. Some FL methods do not use an off-the-shelve model (e.g. ResNet18) instead they create your own. If this is your case, please provide a summary here and give pointers to where in the paper (e.g. Appendix B.4) is detailed._*
-
-****Dataset:**** :warning: *_Earlier you listed already the datasets that your baseline uses. Now you should include a breakdown of the details about each of them. Please include information about: how the dataset is partitioned (e.g. LDA with alpha 0.1 as default and all clients have the same number of training examples; or each client gets assigned a different number of samples following a power-law distribution with each client only instances of 2 classes)? if  your dataset is naturally partitioned just state “naturally partitioned”; how many partitions there are (i.e. how many clients)? Please include this an all information relevant about the dataset and its partitioning into a table._*
-
-****Training Hyperparameters:**** :warning: *_Include a table with all the main hyperparameters in your baseline. Please show them with their default value._*
-
-
-## Environment Setup
-
-:warning: _The Python environment for all baselines should follow these guidelines in the `EXTENDED_README`. Specify the steps to create and activate your environment. If there are any external system-wide requirements, please include instructions for them too. These instructions should be comprehensive enough so anyone can run them (if non standard, describe them step-by-step)._
+The basic setup has been simplified to one setup.sh script using [poetry](https://python-poetry.org/), [pyenv](https://github.com/pyenv/pyenv) and [pre-commit](https://pre-commit.com/). It only requires limited user input, regarding the install location of pyenv and poetry, and will install the specified python version. All dependencies are placed in the local .venv directory. 
 
 
-## Running the Experiments
-
-:warning: _Provide instructions on the steps to follow to run all the experiments._
+By default pre-commit only runs hooks on files which have been staged for commit and thus have changed since the previous commit. If you wish to run all the pre-commit hooks without commiting or pushing use:
 ```bash  
-# The main experiment implemented in your baseline using default hyperparameters (that should be setup in the Hydra configs) should run (including dataset download and necessary partitioning) by executing the command:
-
-poetry run python -m <baseline-name>.main <no additional arguments> # where <baseline-name> is the name of this directory and that of the only sub-directory in this directory (i.e. where all your source code is)
-
-# If you are using a dataset that requires a complicated download (i.e. not using one natively supported by TF/PyTorch) + preprocessing logic, you might want to tell people to run one script first that will do all that. Please ensure the download + preprocessing can be configured to suit (at least!) a different download directory (and use as default the current directory). The expected command to run to do this is:
-
-poetry run python -m <baseline-name>.dataset_preparation <optional arguments, but default should always run>
-
-# It is expected that you baseline supports more than one dataset and different FL settings (e.g. different number of clients, dataset partitioning methods, etc). Please provide a list of commands showing how these experiments are run. Include also a short explanation of what each one does. Here it is expected you'll be using the Hydra syntax to override the default config.
-
-poetry run python -m <baseline-name>.main  <override_some_hyperparameters>
-.
-.
-.
-poetry run python -m <baseline-name>.main  <override_some_hyperparameters>
+poetry run pre-commit run --all-files --hook-stage push
 ```
 
 
-## Expected Results
+## Using the Template
 
-:warning: _Your baseline implementation should replicate several of the experiments in the original paper. Please include here the exact command(s) needed to run each of those experiments followed by a figure (e.g. a line plot) or table showing the results you obtained when you ran the code. Below is an example of how you can present this. Please add command followed by results for all your experiments._
+> Note: these instructions rely on the MNIST task and assume specific dataset partitioning, model creation and dataloader instantiation procedure. We recommend following a similar structure in your own experiments. Please refer to the [Flower](https://flower.dev/docs/baselines/index.html) baselines for more examples. 
+
+Install the template using the setup.sh script:
+```bash
+./setup.sh 
+```
+If poetry, pyenv, and/or the right python version are already installed they will not be installed again. If not installed you will have to provide paths to the desired install locations. If running on a cluster this would be the location of the shared filesystem.
+
+> :warning: Run the ```default``` task to check everything is installed correctly from the root fl-project-template and ****not**** from the fl-project-template/project directory.
 
 ```bash
-# it is likely that for one experiment you need to sweep over different hyperparameters. You are encouraged to use Hydra's multirun functionality for this. This is an example of how you could achieve this for some typical FL hyperparameteres
-
-poetry run python -m <baseline-name>.main --multirun num_client_per_round=5,10,50 dataset=femnist,cifar10
-# the above command will run a total of 6 individual experiments (because 3client_configs x 2datasets = 6 -- you can think of it as a grid).
-
-[Now show a figure/table displaying the results of the above command]
-
-# add more commands + plots for additional experiments.
+poetry run python -m project.main --config-name=base
 ```
+If you have a cluster which may run multiple Ray simulator instances, you will need to launch the server separately. 
+
+The default task should have created a folder in fl-project-template/outputs. This folder contains the results of the experiment. To log your experiments to wandb, log into wandb and then enable it via the command
+
+```bash
+poetry run python -m project.main --config-name=base use_wandb=true
+```
+
+Now you  can run the MNIST example by following these instructions:
+- Specify a ``dataset_dir`` and ``partition_dir`` in ``conf/dataset/mnist.yaml`` together with the ``num_clients``, the size of a clients validation set ``val_ratio``, a ``seed`` for partitioning. Additionally you can also specify if the partition labels should be ``iid``, follow a ``power_law`` distribution or if the partition should ``balance`` the labels across clients. 
+- Download and partition the dataset by running the following command from the root dir: 
+    - ```bash 
+         poetry run python -m project.task.mnist_classification.dataset_preparation
+        ```
+- Specify which ``model_and_data``, ``train_structure`` and ``fit_config`` or ``eval_config`` to use in the ``conf/task/mnist.yaml file``. The defaults are a CNN, a simple classification training/testing loop, and configs controling ``batch_size``, local client ``epochs`` and the ``learning_rate``. You can also specify which metrics to aggregate during fit/eval.
+- Run the experiment using the following command from the root dir: 
+    - ```bash 
+        poetry run python -m project.main --config-name=mnist
+        ```
+
+Once a full experiment has run, you can continue it for a specified number of epochs by running the following command from the root dir to change the output directory to the previous one. 
+- ```bash 
+    poetry run python -m project.main --config-name=mnist reuse_output_dir=<path_to_your_output_directory>
+    ```
+These are all the basic steps required to run a simple experiment. 
+
+## Template Structure
+
+The template uses poetry with the ``project`` name for the top-level package. All imports are made from this package and no relative imports are allowed. The structure is as follows:
+
+```
+project
+├── client
+├── conf
+├── dispatch
+├── fed
+├── main.py
+├── task
+├── types
+└── utils
+```
+Where the main packages of concern are:
+- ``client``: Contains the client class, requires no changes
+- ``conf``: Contains the Hydra configuration files specifying experiment behaviour and the chosen ML task. 
+- ``dispatch``: handles mapping a Hydra configuration to the ML task. 
+- ``fed``: Contains the federated learning functionality such as client sampling and model parameter saving. Should require little to no modification.
+- ``main``: a hydra entry point.
+- ``task``: Contains the ML task implementation including the model, data loading and training/testing. Allmost all user changes should be made here. Tasks whill typically include modules for the following:
+    - ``dataset_preparation``: Hydra entry point which handles downloading the dataset and partitionin it. The partition can be generated on the fly during FL execution or saved into a partition directory with one folder per client containing train and test files---with the server test set being in the root directory of the partition dir. This needs to be executed prior to running the main experiment. It relies on the dataset part of the hydra config.
+    - ``dataset``: offers functionality to create the dataloaders for either the client fit/eval or for the centralised server evaluation.
+    - ``dispatch`: Handles mapping the Hydra config to the required task configuration.
+    - ``models``: Offers functionality to lazily create a model based on a received configuration.
+    - ``train_test``: Offers functionality to train a model on a given dataset. This includes the effective train/test functions together with the config generation functions for the fit/eval stages of FL. The federated evaluation test function, if provided, should also be specified here.
+
+Two tasks are already implemented:
+    - ``default``: A task providing generic functionality which may be reused across tasks. It requires no data and provides a minimum example of what a task needs to provide in order for the FL training to execute. 
+    - ``mnist_classification``: Uses the simple MNIST dataset together with either a CNN or logistic regression model. 
+
+> :warning: Prefer changing only the task module when possible.
+
+

@@ -290,7 +290,7 @@ def _power_law_split(
     return partitions
 
 
-@hydra.main(config_path="../../conf", config_name="base", version_base=None)
+@hydra.main(config_path="../../conf", config_name="mnist", version_base=None)
 def download_and_preprocess(cfg: DictConfig) -> None:
     """Download and preprocess the dataset.
 
