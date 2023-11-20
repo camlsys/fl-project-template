@@ -9,7 +9,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional, cast
+from typing import Dict, Optional, cast
 
 import flwr as fl
 import hydra
@@ -46,7 +46,7 @@ os.environ["HYDRA_FULL_ERROR"] = "1"
 os.environ["OC_CAUSE"] = "1"
 
 
-@hydra.main(config_path="conf", config_name="base", version_base=None)
+@hydra.main(config_path="conf", config_name="mnist", version_base=None)
 def main(cfg: DictConfig) -> None:
     """Run the baseline.
 
@@ -55,7 +55,7 @@ def main(cfg: DictConfig) -> None:
     cfg : DictConfig
         An omegaconf object that stores the hydra config.
     """
-    # 1. Print parsed config
+    # Print parsed config
     log(logging.INFO, OmegaConf.to_yaml(cfg))
 
     wandb_config = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
@@ -121,34 +121,68 @@ def main(cfg: DictConfig) -> None:
 
             save_parameters_to_file = get_save_parameters_to_file(working_dir)
 
+            # Client manager that samples the same clients
+            # For a given seed+checkpoint combination
             client_manager = DeterministicClientManager(
                 adjusted_seed, cfg.fed.enable_resampling
             )
+
+            # New history that sends data to the wandb server
+            # only if use_wandb is True
+            # Minimizes communication to oncer-per-round
             history = WandbHistory(cfg.use_wandb)
 
+            # All of these functions are determined by the cfg.task component
+            # change model_and_data and train_structure
+            # if you want to change them
+            # add functionality to project.dispatch and then
+            # to the invididual dispatch.py file of each task
+
+            # Obtain the net generator, dataloader and fed_dataloader
+            # Change the cfg.task.model_and_data str to change functionality
             net_generator, client_dataloader_gen, fed_dataloater_gen = dispatch_data(
                 cfg
             )
+
+            # Obtain the train/test func and the fed eval func
+            # Change the cfg.task.train_structure str to change functionality
             train_func, test_func, get_fed_eval_fn = dispatch_train(cfg)
+
+            # Obtain the on_fit config and on_eval config
+            # generation functions
+            # these depend on the cfg.task.fit_config
+            # and cfg.task.eval_config dictionaries by default
             on_fit_config_fn, on_evaluate_config_fn = dispatch_config(cfg)
 
+            # Build the evaluate function from the given components
+            # this is the function that is called on the server
+            # to evluated the global model
+            # the cast to Dict is necessary for mypy
+            # as is the to_container
             evaluate_fn: Optional[FedEvalFN] = get_fed_eval_fn(
                 net_generator,
                 fed_dataloater_gen,
                 test_func,
-                cfg.task.fed_test_config,
+                cast(Dict, OmegaConf.to_container(cfg.task.fed_test_config)),
                 working_dir,
             )
 
+            # Path to the save initial parameters
+            # otherwise we generate a new set of params
+            # with the net_gen
             if cfg.fed.load_saved_parameters:
+                # Use the results_dir by default
+                # otherwise use the specificed folder
                 parameters_path = (
                     results_dir / "parameters"
                     if cfg.fed.use_results_dir
                     else Path(cfg.fed.parameters_folder)
                 )
             else:
+                # Generate new parameters
                 parameters_path = None
 
+            # Parameters for the strategy
             initial_parameters = get_initial_parameters(
                 net_generator,
                 cast(
@@ -158,10 +192,13 @@ def main(cfg: DictConfig) -> None:
                 round=cfg.fed.parameters_round,
             )
 
-            # 4. Define your strategy
+            # Define your strategy
             # pass all relevant argument
             # Fraction_fit and fraction_evaluate are ignored
             # in favour of using absolute numbers via min_fit_clients
+            # get_weighted_avg_metrics_agg_fn obeys
+            # the fit_metrics and evaluate_metrics
+            # in the cfg.task
             strategy = instantiate(
                 cfg.strategy.init,
                 fraction_fit=sys.float_info.min,
@@ -182,6 +219,7 @@ def main(cfg: DictConfig) -> None:
                 initial_parameters=initial_parameters,
             )
 
+            # Server that handles Wandb and file saving
             server = WandbServer(
                 client_manager=client_manager,
                 history=history,
@@ -190,6 +228,8 @@ def main(cfg: DictConfig) -> None:
                 save_files_per_round=save_files_per_round,
             )
 
+            # Client generation function for Ray
+            # Do not change
             client_generator: ClientGen = get_client_generator(
                 working_dir=working_dir,
                 net_generator=net_generator,
@@ -197,8 +237,12 @@ def main(cfg: DictConfig) -> None:
                 train=train_func,
                 test=test_func,
             )
+
+            # Seed everything to maybe improve reproduceability
             seed_everything(adjusted_seed)
 
+            # Runs fit and eval on either one client or all of them
+            # Avoids launching ray for debugging purposes
             test_client(
                 test_all_clients=cfg.test_clients.all,
                 test_one_client=cfg.test_clients.one,
@@ -209,9 +253,12 @@ def main(cfg: DictConfig) -> None:
                 on_evaluate_config_fn=on_evaluate_config_fn,
             )
 
-            # 5. Start Simulation
-
-            fl.simulation.start_simulation(
+            # Start Simulation
+            # The ray_init_args are only necessary
+            # if multiple ray server run in parallel
+            # you should provide them from wherever
+            # you start your server (e.g., sh script)
+            history = fl.simulation.start_simulation(
                 client_fn=client_generator,
                 num_clients=cfg.fed.num_total_clients,
                 client_resources={
@@ -230,18 +277,23 @@ def main(cfg: DictConfig) -> None:
                 else {"include_dashboard": False},
             )
 
+            # Make a dir for the histories
             histories_dir = working_dir / "histories"
             histories_dir.mkdir(parents=True, exist_ok=True)
 
+            # Dump the json rather than the object
             with open(histories_dir / "history.json", "w", encoding="utf-8") as f:
                 json.dump(history.__dict__, f, ensure_ascii=False)
 
+        # Sync the entire results dir to wandb if enabled
+        # Only once at the end of the simulation
         if run is not None:
             run.save(
                 str((results_dir / "*").resolve()),
                 str((results_dir).resolve()),
                 "now",
             )
+            # Try to empty the wandb folder of old local runs
             log(
                 logging.INFO,
                 subprocess.run(
@@ -251,8 +303,7 @@ def main(cfg: DictConfig) -> None:
                     check=True,
                 ),
             )
-    log(logging.INFO, f"{cfg.reuse_output_dir} {original_hydra_dir}")
 
 
 if __name__ == "__main__":
-    out_main = main()
+    main()

@@ -9,7 +9,6 @@ exclude: |
                 data/|
                 run_scripts/|
                 .pre-commit-config.yaml/|
-                .readthedocs.yaml
 
   )$
 

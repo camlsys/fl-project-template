@@ -32,4 +32,6 @@ parameters_folder: null
 # If reusing an output directory for checkpointing
 # it will automatically load the requested round from results/parameters
 # Leave as true unless you want to customise this behaviour
+# change base.reuse_output_dir to the path
+# of the checkpointing dir
 use_results_dir: true
