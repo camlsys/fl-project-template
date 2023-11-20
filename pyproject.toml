@@ -4,10 +4,10 @@ build-backend = "poetry.masonry.api"
 
 [tool.poetry]
 name = "project" # 
-version = "0.0.1"
+version = "1.0.0"
 description = "CaMLSys Project"
 license = "Apache-2.0"
-authors = ["The Flower Authors <hello@flower.dev>, Lorenzo Sani <ls985@cam.ac.uk>, Alexandru-Andrei Iacob <aai30@cam.ac.uk>"]
+authors = ["The Flower Authors <hello@flower.dev>, Alexandru-Andrei Iacob <aai30@cam.ac.uk>, Lorenzo Sani <ls985@cam.ac.uk>"]
 readme = "README.md"
 # homepage = ""
 # documentation = ""
