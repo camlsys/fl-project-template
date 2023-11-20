@@ -3,7 +3,7 @@
 This gives us the ability to dynamically choose functionality based on the hydra dict
 config without losing static type checking.
 """
-from typing import Callable, List, Optional
+from collections.abc import Callable
 
 from omegaconf import DictConfig
 
@@ -41,7 +41,7 @@ def dispatch_train(cfg: DictConfig) -> TrainStructure:
         The train function, test function and the get_fed_eval_fn function.
     """
     # Create the list of task dispatches to try
-    task_train_functions: List[Callable[[DictConfig], Optional[TrainStructure]]] = [
+    task_train_functions: list[Callable[[DictConfig], TrainStructure | None]] = [
         dispatch_default_train,
         dispatch_mnist_train,
     ]
@@ -74,8 +74,8 @@ def dispatch_data(cfg: DictConfig) -> DataStructure:
         The net generator and dataloader generator functions.
     """
     # Create the list of task dispatches to try
-    task_data_dependent_functions: List[
-        Callable[[DictConfig], Optional[DataStructure]]
+    task_data_dependent_functions: list[
+        Callable[[DictConfig], DataStructure | None]
     ] = [
         dispatch_mnist_data,
         dispatch_default_data,
@@ -113,7 +113,7 @@ def dispatch_config(cfg: DictConfig) -> ConfigStructure:
         The config functions.
     """
     # Create the list of task dispatches to try
-    task_config_functions: List[Callable[[DictConfig], Optional[ConfigStructure]]] = [
+    task_config_functions: list[Callable[[DictConfig], ConfigStructure | None]] = [
         dispatch_mnist_config,
         dispatch_default_config,
     ]

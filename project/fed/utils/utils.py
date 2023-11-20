@@ -3,8 +3,8 @@
 import logging
 import struct
 from collections import OrderedDict, defaultdict
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set, Tuple
 
 import torch as torch
 import torch.nn as nn
@@ -91,7 +91,7 @@ def load_parameters_from_file(path: Path) -> Parameters:
 
 
 def get_initial_parameters(
-    net_generator: NetGen, config: Dict, load_from: Optional[Path], round=Optional[int]
+    net_generator: NetGen, config: dict, load_from: Path | None, round=int | None
 ) -> Parameters:
     """Get the initial parameters for the network.
 
@@ -181,8 +181,8 @@ def get_save_parameters_to_file(working_dir: Path) -> Callable[[Parameters], Non
 
 
 def get_weighted_avg_metrics_agg_fn(
-    to_agg: Set[str],
-) -> Callable[[List[Tuple[int, Dict]]], Dict]:
+    to_agg: set[str],
+) -> Callable[[list[tuple[int, dict]]], dict]:
     """Return a function to compute a weighted average over pre-defined metrics.
 
     Parameters
@@ -196,7 +196,7 @@ def get_weighted_avg_metrics_agg_fn(
         A function to compute a weighted average over pre-defined metrics.
     """
 
-    def weighted_avg(metrics: List[Tuple[int, Dict]]) -> Dict:
+    def weighted_avg(metrics: list[tuple[int, dict]]) -> dict:
         """Compute a weighted average over pre-defined metrics.
 
         Parameters
@@ -210,7 +210,7 @@ def get_weighted_avg_metrics_agg_fn(
             The weighted average over pre-defined metrics.
         """
         total_num_examples = sum([num_examples for num_examples, _ in metrics])
-        weighted_metrics: Dict = defaultdict(float)
+        weighted_metrics: dict = defaultdict(float)
         for num_examples, metric in metrics:
             for key, value in metric.items():
                 if key in to_agg:
@@ -229,8 +229,8 @@ def test_client(
     client_generator: ClientGen,
     initial_parameters: Parameters,
     total_clients: int,
-    on_fit_config_fn: Optional[OnFitConfigFN],
-    on_evaluate_config_fn: Optional[OnEvaluateConfigFN],
+    on_fit_config_fn: OnFitConfigFN | None,
+    on_evaluate_config_fn: OnEvaluateConfigFN | None,
 ) -> None:
     """Debug the client code.
 

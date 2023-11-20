@@ -1,7 +1,8 @@
 """Default training and testing functions, local and federated."""
 
+from collections.abc import Sized
 from pathlib import Path
-from typing import Dict, Optional, Sized, Tuple, cast
+from typing import cast
 
 import torch
 from flwr.common import NDArrays
@@ -41,9 +42,9 @@ class TrainConfig(BaseModel):
 def train(  # pylint: disable=too-many-arguments
     net: nn.Module,
     trainloader: DataLoader,
-    _config: Dict,
+    _config: dict,
     _working_dir: Path,
-) -> Tuple[int, Dict]:
+) -> tuple[int, dict]:
     """Train the network on the training set.
 
     Parameters
@@ -91,8 +92,8 @@ class TestConfig(BaseModel):
 
 
 def test(
-    net: nn.Module, testloader: DataLoader, _config: Dict, _working_dir: Path
-) -> Tuple[float, int, Dict]:
+    net: nn.Module, testloader: DataLoader, _config: dict, _working_dir: Path
+) -> tuple[float, int, dict]:
     """Evaluate the network on the test set.
 
     Parameters
@@ -132,9 +133,9 @@ def get_fed_eval_fn(
     net_generator: NetGen,
     fed_dataloater_generator: FedDataloaderGen,
     test_func: TestFunc,
-    _config: Dict,
+    _config: dict,
     working_dir: Path,
-) -> Optional[FedEvalFN]:
+) -> FedEvalFN | None:
     """Get the federated evaluation function.
 
     Parameters
@@ -156,8 +157,8 @@ def get_fed_eval_fn(
     testloader = fed_dataloater_generator(True, config.dataloader_config)
 
     def fed_eval_fn(
-        _server_round: int, parameters: NDArrays, fake_config: Dict
-    ) -> Optional[Tuple[float, Dict]]:
+        _server_round: int, parameters: NDArrays, fake_config: dict
+    ) -> tuple[float, dict] | None:
         """Evaluate the model on the given data.
 
         Parameters
@@ -189,7 +190,7 @@ def get_fed_eval_fn(
     return fed_eval_fn
 
 
-def get_on_fit_config_fn(fit_config: Dict) -> OnFitConfigFN:
+def get_on_fit_config_fn(fit_config: dict) -> OnFitConfigFN:
     """Generate on_fit_config_fn based on a dict from the hydra config,.
 
     Parameters
@@ -206,7 +207,7 @@ def get_on_fit_config_fn(fit_config: Dict) -> OnFitConfigFN:
     # Fail early if the fit_config does not match expectations
     ClientConfig(**fit_config)
 
-    def fit_config_fn(server_round: int) -> Dict:
+    def fit_config_fn(server_round: int) -> dict:
         """MNIST on_fit_config_fn.
 
         Parameters

@@ -12,7 +12,6 @@ You can use all those functions from functions/methods defined here of course.
 
 
 from collections import defaultdict
-from typing import Dict
 
 import torch
 from pydantic import BaseModel
@@ -49,7 +48,7 @@ class FedDataloaderConfig(BaseModel):
         arbitrary_types_allowed = True
 
 
-def get_client_dataloader(cid: str | int, test: bool, _config: Dict) -> DataLoader:
+def get_client_dataloader(cid: str | int, test: bool, _config: dict) -> DataLoader:
     """Return a DataLoader for a client's dataset.
 
     Parameters
@@ -72,13 +71,13 @@ def get_client_dataloader(cid: str | int, test: bool, _config: Dict) -> DataLoad
 
     # You should load/create one train/test dataset per client
     if not test:
-        empty_trainset_dict: Dict[str | int, Dataset] = defaultdict(
+        empty_trainset_dict: dict[str | int, Dataset] = defaultdict(
             lambda: TensorDataset(torch.Tensor([1]), torch.Tensor([1]))
         )
         # Choose the client dataset based on the client id and train/test
         dataset = empty_trainset_dict[cid]
     else:
-        empty_testest_dict: Dict[str | int, Dataset] = defaultdict(
+        empty_testest_dict: dict[str | int, Dataset] = defaultdict(
             lambda: TensorDataset(torch.Tensor([1]), torch.Tensor([1]))
         )
         # Choose the client dataset based on the client id and train/test
@@ -89,7 +88,7 @@ def get_client_dataloader(cid: str | int, test: bool, _config: Dict) -> DataLoad
     )
 
 
-def get_fed_dataloader(test: bool, _config: Dict) -> DataLoader:
+def get_fed_dataloader(test: bool, _config: dict) -> DataLoader:
     """Return a DataLoader for federated train/test sets.
 
     Parameters

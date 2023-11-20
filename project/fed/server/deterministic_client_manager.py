@@ -2,7 +2,6 @@
 
 import logging
 import random
-from typing import List, Optional
 
 from flwr.common.logger import log
 from flwr.server.client_manager import SimpleClientManager
@@ -43,9 +42,9 @@ class DeterministicClientManager(SimpleClientManager):
     def sample(
         self,
         num_clients: int,
-        min_num_clients: Optional[int] = None,
-        criterion: Optional[Criterion] = None,
-    ) -> List[ClientProxy]:
+        min_num_clients: int | None = None,
+        criterion: Criterion | None = None,
+    ) -> list[ClientProxy]:
         """Sample a number of Flower ClientProxy instances.
 
         Guarantees deterministic client sampling and enables

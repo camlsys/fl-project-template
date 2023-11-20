@@ -7,9 +7,10 @@ import logging
 import random
 import re
 import shutil
+from collections.abc import Callable, Iterator
 from itertools import chain
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator, List, Optional, cast
+from typing import Any, cast
 
 import numpy as np
 import ray
@@ -48,7 +49,7 @@ def lazy_wrapper(x: Callable) -> Callable[[], Any]:
     return lambda: x
 
 
-def lazy_config_wrapper(x: Callable) -> Callable[[Dict], Any]:
+def lazy_config_wrapper(x: Callable) -> Callable[[dict], Any]:
     """Wrap a value in a function that returns the value given a config.
 
     For easy instantion through hydra.
@@ -153,7 +154,7 @@ class RayContextManager:
             )
 
 
-def cleanup(working_dir: Path, to_clean: List[str]) -> None:
+def cleanup(working_dir: Path, to_clean: list[str]) -> None:
     """Cleanup the files in the working dir.
 
     Parameters
@@ -167,7 +168,7 @@ def cleanup(working_dir: Path, to_clean: List[str]) -> None:
     -------
         None
     """
-    children: List[Path] = []
+    children: list[Path] = []
     for file in working_dir.iterdir():
         if file.is_file():
             for clean_token in to_clean:
@@ -182,7 +183,7 @@ def cleanup(working_dir: Path, to_clean: List[str]) -> None:
         cleanup(child, to_clean)
 
 
-def get_checkpoint_index(output_dir: Path, file_limit: Optional[int]) -> int:
+def get_checkpoint_index(output_dir: Path, file_limit: int | None) -> int:
     """Get the index of the next checkpoint.
 
     Parameters
@@ -220,9 +221,9 @@ def get_checkpoint_index(output_dir: Path, file_limit: Optional[int]) -> int:
 def save_files(
     working_dir: Path,
     output_dir: Path,
-    to_save: List[str],
+    to_save: list[str],
     checkpoint_index: int,
-    ending: Optional[int] = None,
+    ending: int | None = None,
     top_level: bool = True,
 ) -> None:
     """Save the files in the working dir.
@@ -241,7 +242,7 @@ def save_files(
     if not top_level:
         output_dir = output_dir / working_dir.name
 
-    children: List[Path] = []
+    children: list[Path] = []
     for file in working_dir.iterdir():
         if file.is_file():
             for save_token in to_save:
@@ -281,11 +282,11 @@ class FileSystemManager:
         self,
         working_dir: Path,
         output_dir,
-        to_clean_once: List[str],
-        to_save_once: List[str],
+        to_clean_once: list[str],
+        to_save_once: list[str],
         original_hydra_dir: Path,
         reuse_output_dir: bool,
-        file_limit: Optional[int] = None,
+        file_limit: int | None = None,
     ) -> None:
         """Initialize the context manager.
 
@@ -322,7 +323,7 @@ class FileSystemManager:
 
     def get_save_files_every_round(
         self,
-        to_save: List[str],
+        to_save: list[str],
         save_frequency: int,
     ) -> Callable[[int], None]:
         """Get a function that saves files every save_frequency rounds.

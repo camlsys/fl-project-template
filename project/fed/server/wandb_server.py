@@ -1,7 +1,7 @@
 """Flower server accounting for Weights&Biases+file saving."""
 import timeit
+from collections.abc import Callable
 from logging import INFO
-from typing import Callable, Optional
 
 from flwr.common import Parameters
 from flwr.common.logger import log
@@ -18,8 +18,8 @@ class WandbServer(Server):
         self,
         *,
         client_manager: ClientManager,
-        strategy: Optional[Strategy] = None,
-        history: Optional[History] = None,
+        strategy: Strategy | None = None,
+        history: History | None = None,
         save_parameters_to_file: Callable[[Parameters], None],
         save_files_per_round: Callable[[int], None],
     ) -> None:
@@ -44,12 +44,12 @@ class WandbServer(Server):
         """
         super().__init__(client_manager=client_manager, strategy=strategy)
 
-        self.history: Optional[History] = history
+        self.history: History | None = history
         self.save_parameters_to_file = save_parameters_to_file
         self.save_files_per_round = save_files_per_round
 
     # pylint: disable=too-many-locals
-    def fit(self, num_rounds: int, timeout: Optional[float]) -> History:
+    def fit(self, num_rounds: int, timeout: float | None) -> History:
         """Run federated averaging for a number of rounds.
 
         Parameters

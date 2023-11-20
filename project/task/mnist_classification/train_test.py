@@ -1,7 +1,8 @@
 """MNIST training and testing functions, local and federated."""
 
+from collections.abc import Sized
 from pathlib import Path
-from typing import Dict, Sized, Tuple, cast
+from typing import cast
 
 import torch
 from pydantic import BaseModel
@@ -37,9 +38,9 @@ class TrainConfig(BaseModel):
 def train(  # pylint: disable=too-many-arguments
     net: nn.Module,
     trainloader: DataLoader,
-    _config: Dict,
+    _config: dict,
     _working_dir: Path,
-) -> Tuple[int, Dict]:
+) -> tuple[int, dict]:
     """Train the network on the training set.
 
     Parameters
@@ -111,8 +112,8 @@ class TestConfig(BaseModel):
 
 
 def test(
-    net: nn.Module, testloader: DataLoader, _config: Dict, _working_dir: Path
-) -> Tuple[float, int, Dict]:
+    net: nn.Module, testloader: DataLoader, _config: dict, _working_dir: Path
+) -> tuple[float, int, dict]:
     """Evaluate the network on the test set.
 
     Parameters

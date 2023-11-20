@@ -1,7 +1,6 @@
 """MNIST dataset utilities for federated learning."""
 
 from pathlib import Path
-from typing import Dict, Tuple
 
 import torch
 from torch.utils.data import DataLoader
@@ -22,7 +21,7 @@ FedDataloaderConfig = DefaultFedDataloaderConfig
 
 def get_dataloader_generators(
     partition_dir: Path,
-) -> Tuple[ClientDataloaderGen, FedDataloaderGen]:
+) -> tuple[ClientDataloaderGen, FedDataloaderGen]:
     """Return a function that loads a client's dataset.
 
     Parameters
@@ -39,7 +38,7 @@ def get_dataloader_generators(
         and a DataLoader for the federated dataset.
     """
 
-    def get_client_dataloader(cid: str | int, test: bool, _config: Dict) -> DataLoader:
+    def get_client_dataloader(cid: str | int, test: bool, _config: dict) -> DataLoader:
         """Return a DataLoader for a client's dataset.
 
         Parameters
@@ -66,7 +65,7 @@ def get_dataloader_generators(
             dataset = torch.load(client_dir / "test.pt")
         return DataLoader(dataset, batch_size=config.batch_size, shuffle=not test)
 
-    def get_federated_dataloader(test: bool, _config: Dict) -> DataLoader:
+    def get_federated_dataloader(test: bool, _config: dict) -> DataLoader:
         """Return a DataLoader for federated train/test sets.
 
         Parameters

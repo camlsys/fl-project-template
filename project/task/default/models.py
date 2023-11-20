@@ -1,5 +1,4 @@
 """Define our models, and training and eval functions."""
-from typing import Dict
 
 import torch.nn as nn
 
@@ -11,7 +10,7 @@ class Net(nn.Module):
     pass
 
 
-def get_net(config: Dict) -> nn.Module:
+def get_net(config: dict) -> nn.Module:
     """Return a model instance.
 
     Args:

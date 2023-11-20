@@ -9,7 +9,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, Optional, cast
+from typing import cast
 
 import flwr as fl
 import hydra
@@ -160,11 +160,11 @@ def main(cfg: DictConfig) -> None:
             # to evaluated the global model
             # the cast to Dict is necessary for mypy
             # as is the to_container
-            evaluate_fn: Optional[FedEvalFN] = get_fed_eval_fn(
+            evaluate_fn: FedEvalFN | None = get_fed_eval_fn(
                 net_generator,
                 fed_dataloater_gen,
                 test_func,
-                cast(Dict, OmegaConf.to_container(cfg.task.fed_test_config)),
+                cast(dict, OmegaConf.to_container(cfg.task.fed_test_config)),
                 working_dir,
             )
 

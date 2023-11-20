@@ -1,7 +1,8 @@
 """Functions for MNIST download and processing."""
 import logging
+from collections.abc import Sequence, Sized
 from pathlib import Path
-from typing import List, Sequence, Sized, Tuple, cast
+from typing import cast
 
 import hydra
 import numpy as np
@@ -13,7 +14,7 @@ from torch.utils.data import ConcatDataset, Subset, random_split
 from torchvision.datasets import MNIST
 
 
-def _download_data(dataset_dir: Path) -> Tuple[MNIST, MNIST]:
+def _download_data(dataset_dir: Path) -> tuple[MNIST, MNIST]:
     """Download (if necessary) and returns the MNIST dataset.
 
     Returns
@@ -40,7 +41,7 @@ def _partition_data(
     iid: bool,
     power_law: bool,
     balance: bool,
-) -> Tuple[List[Subset] | List[ConcatDataset], MNIST]:
+) -> tuple[list[Subset] | list[ConcatDataset], MNIST]:
     """Split training set into iid or non iid partitions to simulate the federated.
 
     setting.
@@ -199,7 +200,7 @@ def _power_law_split(
     min_data_per_partition: int = 10,
     mean: float = 0.0,
     sigma: float = 2.0,
-) -> List[Subset]:
+) -> list[Subset]:
     """Partition the dataset following a power-law distribution. It follows the.
 
     implementation of Li et al 2020: https://arxiv.org/abs/1812.06127 with default
@@ -234,7 +235,7 @@ def _power_law_split(
     labels_cs = np.cumsum(class_counts)
     labels_cs = [0] + labels_cs[:-1].tolist()
 
-    partitions_idx: List[List[int]] = []
+    partitions_idx: list[list[int]] = []
     num_classes = len(np.bincount(targets))
     hist = np.zeros(num_classes, dtype=np.int32)
 

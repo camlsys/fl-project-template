@@ -3,7 +3,6 @@
 Make sure the model and dataset are not loaded before the fit function.
 """
 from pathlib import Path
-from typing import Dict, Optional
 
 import flwr as fl
 import torch.nn as nn
@@ -32,13 +31,13 @@ class ClientConfig(BaseModel):
     """
 
     # Instantiate model
-    net_config: Dict
+    net_config: dict
     # Instantiate dataloader
-    dataloader_config: Dict
+    dataloader_config: dict
     # For train/test
-    run_config: Dict
+    run_config: dict
     # Additional params used like a Dict
-    extra: Dict
+    extra: dict
 
     class Config:
         """Setting to allow any types, including library ones like torch.device."""
@@ -83,7 +82,7 @@ class Client(fl.client.NumPyClient):
         self.cid = cid
         self.net_generator = net_generator
         self.working_dir = working_dir
-        self.net: Optional[nn.Module] = None
+        self.net: nn.Module | None = None
         self.dataloader_gen = dataloader_gen
         self.train = train
         self.test = test
@@ -91,7 +90,7 @@ class Client(fl.client.NumPyClient):
     def fit(
         self,
         parameters: NDArrays,
-        _config: Dict,
+        _config: dict,
     ) -> FitRes:
         """Fit the model using the provided parameters.
 
@@ -128,7 +127,7 @@ class Client(fl.client.NumPyClient):
     def evaluate(
         self,
         parameters: NDArrays,
-        _config: Dict,
+        _config: dict,
     ) -> EvalRes:
         """Evaluate the model using the provided parameters.
 
@@ -162,7 +161,7 @@ class Client(fl.client.NumPyClient):
         )
         return loss, num_samples, metrics
 
-    def get_parameters(self, config: Dict) -> NDArrays:
+    def get_parameters(self, config: dict) -> NDArrays:
         """Obtain client parameters.
 
         If the network is currently none,generate a network using the net_generator.
@@ -187,7 +186,7 @@ class Client(fl.client.NumPyClient):
 
         return generic_get_parameters(self.net)
 
-    def set_parameters(self, parameters: NDArrays, config: Dict) -> nn.Module:
+    def set_parameters(self, parameters: NDArrays, config: dict) -> nn.Module:
         """Set client parameters.
 
         First generated the network. Only call this in fit/eval.
@@ -212,7 +211,7 @@ class Client(fl.client.NumPyClient):
         """Implement the string representation based on cid."""
         return f"Client(cid={self.cid})"
 
-    def get_properties(self, config: Dict) -> Dict:
+    def get_properties(self, config: dict) -> dict:
         """Implement how to get properties."""
         return {}
 

@@ -3,7 +3,6 @@
 Metrics are collected only at the central server, minimizing communication costs. Metric
 collection only happens if wandb is turned on.
 """
-from typing import Dict
 
 from flwr.common.typing import Scalar
 from flwr.server.history import History
@@ -68,7 +67,7 @@ class WandbHistory(History):
             wandb.log({"centralised_loss": loss}, step=server_round)
 
     def add_metrics_distributed_fit(
-        self, server_round: int, metrics: Dict[str, Scalar]
+        self, server_round: int, metrics: dict[str, Scalar]
     ) -> None:
         """Add metrics entries (from distributed fit) to history/wandb.
 
@@ -89,7 +88,7 @@ class WandbHistory(History):
                 wandb.log({key: metrics[key]}, step=server_round)
 
     def add_metrics_distributed(
-        self, server_round: int, metrics: Dict[str, Scalar]
+        self, server_round: int, metrics: dict[str, Scalar]
     ) -> None:
         """Add metrics entries (from distributed evaluation) to history/wandb.
 
@@ -110,7 +109,7 @@ class WandbHistory(History):
                 wandb.log({key: metrics[key]}, step=server_round)
 
     def add_metrics_centralized(
-        self, server_round: int, metrics: Dict[str, Scalar]
+        self, server_round: int, metrics: dict[str, Scalar]
     ) -> None:
         """Add metrics entries (from centralized evaluation) to history/wand.
 
