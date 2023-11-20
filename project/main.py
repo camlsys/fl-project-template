@@ -258,7 +258,7 @@ def main(cfg: DictConfig) -> None:
             # if multiple ray server run in parallel
             # you should provide them from wherever
             # you start your server (e.g., sh script)
-            history = fl.simulation.start_simulation(
+            fl.simulation.start_simulation(
                 client_fn=client_generator,
                 num_clients=cfg.fed.num_total_clients,
                 client_resources={
