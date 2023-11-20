@@ -1,7 +1,7 @@
 """Create and connect the building blocks for your experiments; start the simulation.
 
-It includes processioning the dataset, instantiate strategy, specify how the global
-model is going to be evaluated, etc. At the end, this script saves the results.
+It includes processing the dataset, instantiate strategy, specifying how the global
+model will be evaluated, etc. In the end, this script saves the results.
 """
 import json
 import logging
@@ -97,8 +97,9 @@ def main(cfg: DictConfig) -> None:
         log(logging.INFO, "Wandb run initialized with %s", cfg.use_wandb)
 
         # Context managers for saving and cleaning up files
-        # from working directory at start/end of simulation
-        # The RayContextManager delets the ray session folder
+        # from the working directory 
+        # at the start/end of the simulation
+        # The RayContextManager deletes the ray session folder
         with FileSystemManager(
             working_dir=working_dir,
             output_dir=results_dir,
@@ -109,7 +110,7 @@ def main(cfg: DictConfig) -> None:
             file_limit=cfg.file_limit,
         ) as fs_manager, RayContextManager() as _ray_manager:
             # Which files to save every <to_save_per_round> rounds
-            # e.g model checkpoints
+            # e.g. model checkpoints
             save_files_per_round = fs_manager.get_save_files_every_round(
                 cfg.to_save_per_round,
                 cfg.save_frequency,
@@ -134,9 +135,9 @@ def main(cfg: DictConfig) -> None:
 
             # All of these functions are determined by the cfg.task component
             # change model_and_data and train_structure
-            # if you want to change them
+            # If you want to change them
             # add functionality to project.dispatch and then
-            # to the invididual dispatch.py file of each task
+            # to the individual dispatch.py file of each task
 
             # Obtain the net generator, dataloader and fed_dataloader
             # Change the cfg.task.model_and_data str to change functionality
@@ -150,13 +151,13 @@ def main(cfg: DictConfig) -> None:
 
             # Obtain the on_fit config and on_eval config
             # generation functions
-            # these depend on the cfg.task.fit_config
+            # These depend on the cfg.task.fit_config
             # and cfg.task.eval_config dictionaries by default
             on_fit_config_fn, on_evaluate_config_fn = dispatch_config(cfg)
 
             # Build the evaluate function from the given components
-            # this is the function that is called on the server
-            # to evluated the global model
+            # This is the function that is called on the server
+            # to evaluated the global model
             # the cast to Dict is necessary for mypy
             # as is the to_container
             evaluate_fn: Optional[FedEvalFN] = get_fed_eval_fn(
@@ -168,7 +169,7 @@ def main(cfg: DictConfig) -> None:
             )
 
             # Path to the save initial parameters
-            # otherwise we generate a new set of params
+            # otherwise, we generate a new set of params
             # with the net_gen
             if cfg.fed.load_saved_parameters:
                 # Use the results_dir by default
@@ -195,7 +196,7 @@ def main(cfg: DictConfig) -> None:
             # Define your strategy
             # pass all relevant argument
             # Fraction_fit and fraction_evaluate are ignored
-            # in favour of using absolute numbers via min_fit_clients
+            # in favor of using absolute numbers via min_fit_clients
             # get_weighted_avg_metrics_agg_fn obeys
             # the fit_metrics and evaluate_metrics
             # in the cfg.task
@@ -255,7 +256,7 @@ def main(cfg: DictConfig) -> None:
 
             # Start Simulation
             # The ray_init_args are only necessary
-            # if multiple ray server run in parallel
+            # If multiple ray servers run in parallel
             # you should provide them from wherever
             # you start your server (e.g., sh script)
             fl.simulation.start_simulation(
