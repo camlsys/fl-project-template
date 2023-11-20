@@ -3,6 +3,7 @@ data
 outputs/*
 multirun/*
 wandb/*
+run_scripts/launch_template.sh
 
 # Slurm logs
 slurm-*.out
