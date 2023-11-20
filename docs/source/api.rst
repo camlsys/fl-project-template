@@ -4,4 +4,4 @@ API
 .. autosummary::
    :toctree: generated
 
-   project
+   main
