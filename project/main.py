@@ -155,7 +155,7 @@ def main(cfg: DictConfig) -> None:
             # and cfg.task.eval_config dictionaries by default
             on_fit_config_fn, on_evaluate_config_fn = dispatch_config(cfg)
 
-            # Build the eval function from the given components
+            # Build the evaluate function from the given components
             # This is the function that is called on the server
             # to evaluated the global model
             # the cast to Dict is necessary for mypy
