@@ -97,7 +97,7 @@ def main(cfg: DictConfig) -> None:
         log(logging.INFO, "Wandb run initialized with %s", cfg.use_wandb)
 
         # Context managers for saving and cleaning up files
-        # from the working directory 
+        # from the working directory
         # at the start/end of the simulation
         # The RayContextManager deletes the ray session folder
         with FileSystemManager(
