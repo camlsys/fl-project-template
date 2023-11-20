@@ -1,0 +1,23 @@
+---
+version: 2
+
+updates:
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: daily
+    allow:
+      # Allow only updates for dev dependencies
+      - dependency-type: development
+    ignore: null
+      # Ignore updates from certain packages
+      # - dependency-name: "grpcio-tools"
+      # - dependency-name: "mypy-protobuf"
+      # - dependency-name: "types-protobuf"
+    open-pull-requests-limit: 3
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      # Check for updates to GitHub Actions every week
+      interval: weekly
