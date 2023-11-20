@@ -46,7 +46,7 @@ os.environ["HYDRA_FULL_ERROR"] = "1"
 os.environ["OC_CAUSE"] = "1"
 
 
-@hydra.main(config_path="conf", config_name="mnist", version_base=None)
+@hydra.main(config_path="conf", config_name="base", version_base=None)
 def main(cfg: DictConfig) -> None:
     """Run the baseline.
 

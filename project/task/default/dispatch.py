@@ -17,9 +17,9 @@ return None and the dispatch of the next task
 in the chain specified by project.dispatch will be used.
 """
 
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from project.task.default.dataset import get_client_dataloader, get_fed_dataloader
 from project.task.default.models import get_net
@@ -133,6 +133,8 @@ def dispatch_config(cfg: DictConfig) -> Optional[ConfigStructure]:
 
     # Only consider existing config dicts as matches
     if fit_config is not None and eval_config is not None:
-        return get_on_fit_config_fn(fit_config), get_on_evaluate_config_fn(eval_config)
+        return get_on_fit_config_fn(
+            cast(Dict, OmegaConf.to_container(fit_config))
+        ), get_on_evaluate_config_fn(cast(Dict, OmegaConf.to_container(eval_config)))
 
     return None

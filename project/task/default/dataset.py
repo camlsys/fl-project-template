@@ -73,18 +73,20 @@ def get_client_dataloader(cid: str | int, test: bool, _config: Dict) -> DataLoad
     # You should load/create one train/test dataset per client
     if not test:
         empty_trainset_dict: Dict[str | int, Dataset] = defaultdict(
-            lambda: TensorDataset(torch.Tensor([]), torch.Tensor([]))
+            lambda: TensorDataset(torch.Tensor([1]), torch.Tensor([1]))
         )
         # Choose the client dataset based on the client id and train/test
         dataset = empty_trainset_dict[cid]
     else:
         empty_testest_dict: Dict[str | int, Dataset] = defaultdict(
-            lambda: TensorDataset(torch.Tensor([]), torch.Tensor([]))
+            lambda: TensorDataset(torch.Tensor([1]), torch.Tensor([1]))
         )
         # Choose the client dataset based on the client id and train/test
         dataset = empty_testest_dict[cid]
 
-    return DataLoader(dataset, batch_size=config.batch_size, shuffle=not test)
+    return DataLoader(
+        dataset, batch_size=config.batch_size, shuffle=not test, drop_last=True
+    )
 
 
 def get_fed_dataloader(test: bool, _config: Dict) -> DataLoader:
@@ -107,12 +109,14 @@ def get_fed_dataloader(test: bool, _config: Dict) -> DataLoader:
 
     # Create one train/test empty dataset for the server
     if not test:
-        empty_trainset: Dataset = TensorDataset(torch.Tensor([]), torch.Tensor([]))
+        empty_trainset: Dataset = TensorDataset(torch.Tensor([1]), torch.Tensor([1]))
         # Choose the server dataset based on the train/test
         dataset = empty_trainset
     else:
-        empty_testet: Dataset = TensorDataset(torch.Tensor([]), torch.Tensor([]))
+        empty_testet: Dataset = TensorDataset(torch.Tensor([1]), torch.Tensor([1]))
         # Choose the server dataset based on the train/test
         dataset = empty_testet
 
-    return DataLoader(dataset, batch_size=config.batch_size, shuffle=not test)
+    return DataLoader(
+        dataset, batch_size=config.batch_size, shuffle=not test, drop_last=True
+    )
