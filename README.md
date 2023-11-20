@@ -120,8 +120,8 @@ The the main packages of concern are:
     - ``train_test``: Offers functionality to train a model on a given dataset. This includes the effective train/test functions together with the config generation functions for the fit/eval stages of FL. The federated evaluation test function, if provided, should also be specified here.
 
 Two tasks are already implemented:
-    - ``default``: A task providing generic functionality that may be reused across tasks. It requires no data and provides a minimum example of what a task must provide for the FL training to execute. 
-    - ``mnist_classification``: Uses the simple MNIST dataset with either a CNN or logistic regression model. 
+- ``default``: A task providing generic functionality that may be reused across tasks. It requires no data and provides a minimum example of what a task must provide for the FL training to execute. 
+- ``mnist_classification``: Uses the simple MNIST dataset with either a CNN or logistic regression model. 
 
 > :warning: Prefer changing only the task module when possible.
 
