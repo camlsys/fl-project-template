@@ -8,9 +8,42 @@ from typing import Dict, Optional
 import flwr as fl
 import torch.nn as nn
 from flwr.common import NDArrays
+from pydantic import BaseModel
 
 from project.fed.utils.utils import generic_get_parameters, generic_set_parameters
-from project.types.common import ClientDataloaderGen, ClientGen, NetGen
+from project.types.common import (
+    ClientDataloaderGen,
+    ClientGen,
+    EvalRes,
+    FitRes,
+    NetGen,
+    TestFunc,
+    TrainFunc,
+)
+from project.utils.utils import obtain_device
+
+
+class ClientConfig(BaseModel):
+    """Fit/eval config, allows '.' member acces and static checking.
+
+    Used to check weather each component has its own independent config present. Each
+    component should then use its own Pydantic model to validate its config. For
+    anything extra, use the extra field as a simple dict.
+    """
+
+    # Instantiate model
+    net_config: Dict
+    # Instantiate dataloader
+    dataloader_config: Dict
+    # For train/test
+    run_config: Dict
+    # Additional params used like a Dict
+    extra: Dict
+
+    class Config:
+        """Setting to allow any types, including library ones like torch.device."""
+
+        arbitrary_types_allowed = True
 
 
 class Client(fl.client.NumPyClient):
@@ -22,6 +55,8 @@ class Client(fl.client.NumPyClient):
         working_dir: Path,
         net_generator: NetGen,
         dataloader_gen: ClientDataloaderGen,
+        train: TrainFunc,
+        test: TestFunc,
     ) -> None:
         """Initialize the client.
 
@@ -50,52 +85,82 @@ class Client(fl.client.NumPyClient):
         self.working_dir = working_dir
         self.net: Optional[nn.Module] = None
         self.dataloader_gen = dataloader_gen
+        self.train = train
+        self.test = test
 
-    # def fit(
-    #     self,
-    #     parameters: NDArrays,
-    #     config: Dict,
-    # ) -> FitRes:
-    #     """Fit the model using the provided parameters.
+    def fit(
+        self,
+        parameters: NDArrays,
+        _config: Dict,
+    ) -> FitRes:
+        """Fit the model using the provided parameters.
 
-    #     Only ever instantiate the model or load dataset
-    #     inside fit, never in init.
-    #     Parameters
-    #     ----------
-    #     parameters : NDArrays
-    #         The parameters to use for training.
-    #     config : Dict
-    #         The configuration for the training.
+        Only ever instantiate the model or load dataset
+        inside fit, never in init.
 
-    #     Returns
-    #     -------
-    #     FitRes
-    #         The parameters after training, the number of samples used and the metrics.
-    #     """
-    #     self.net = self.set_parameters(parameters,  config)
+        Parameters
+        ----------
+        parameters : NDArrays
+            The parameters to use for training.
+        _config : Dict
+            The configuration for the training.
+            Uses the pydantic model for static checking.
 
-    # def evaluate(
-    #     self,
-    #     parameters: NDArrays,
-    #     config: Dict,
-    # ) -> EvalRes:
-    #     """Evaluate the model using the provided parameters.
+        Returns
+        -------
+        FitRes
+            The parameters after training, the number of samples used and the metrics.
+        """
+        config: ClientConfig = ClientConfig(**_config)
+        del _config
 
-    #     Only ever instantiate the model or load dataset
-    #     inside eval, never in init.
-    #     Parameters
-    #     ----------
-    #     parameters : NDArrays
-    #         The parameters to use for evaluation.
-    #     config : Dict
-    #         The configuration for the evaluation.
+        config.run_config["device"] = obtain_device()
+        self.net = self.set_parameters(parameters, config.net_config)
+        trainloader = self.dataloader_gen(self.cid, False, config.dataloader_config)
+        num_samples, metrics = self.train(
+            self.net,
+            trainloader,
+            config.run_config,
+            self.working_dir,
+        )
+        return generic_get_parameters(self.net), num_samples, metrics
 
-    #     Returns
-    #     -------
-    #     EvalRes
-    #         The loss, the number of samples used and the metrics.
-    #     """
-    #     self.net = self.set_parameters(parameters,  config)
+    def evaluate(
+        self,
+        parameters: NDArrays,
+        _config: Dict,
+    ) -> EvalRes:
+        """Evaluate the model using the provided parameters.
+
+        Only ever instantiate the model or load dataset
+        inside eval, never in init.
+
+        Parameters
+        ----------
+        parameters : NDArrays
+            The parameters to use for evaluation.
+        _config : Dict
+            The configuration for the evaluation.
+            Uses the pydantic model for static checking.
+
+        Returns
+        -------
+        EvalRes
+            The loss, the number of samples used and the metrics.
+        """
+        config: ClientConfig = ClientConfig(**_config)
+        del _config
+
+        config.run_config["device"] = obtain_device()
+        self.net = self.set_parameters(parameters, config.net_config)
+        testloader = self.dataloader_gen(self.cid, True, config.dataloader_config)
+        loss, num_samples, metrics = self.test(
+            self.net,
+            testloader,
+            config.run_config,
+            self.working_dir,
+        )
+        return loss, num_samples, metrics
 
     def get_parameters(self, config: Dict) -> NDArrays:
         """Obtain client parameters.
@@ -113,7 +178,13 @@ class Client(fl.client.NumPyClient):
             The parameters of the network.
         """
         if self.net is None:
-            return generic_get_parameters(self.net_generator(config))
+            raise ValueError(
+                """Network is None.
+                Call set_parameters first and
+                do not use this template without a get_initial_parameters function.
+                """
+            )
+
         return generic_get_parameters(self.net)
 
     def set_parameters(self, parameters: NDArrays, config: Dict) -> nn.Module:
@@ -126,7 +197,7 @@ class Client(fl.client.NumPyClient):
         parameters : NDArrays
             The parameters to set.
         config : Dict
-            The configuration for the training.
+            The configuration for the network generator.
 
         Returns
         -------
@@ -147,12 +218,17 @@ class Client(fl.client.NumPyClient):
 
 
 def get_client_generator(
-    working_dir: Path, net_generator: NetGen, dataloader_gen: ClientDataloaderGen
+    working_dir: Path,
+    net_generator: NetGen,
+    dataloader_gen: ClientDataloaderGen,
+    train: TrainFunc,
+    test: TestFunc,
 ) -> ClientGen:
-    """Return a function which creates a new Client for a given config.
+    """Return a function which creates a new Client.
 
-    Client has access to the working dir, can generate a network and
-    can generate a dataloader.
+    Client has access to the working dir,
+    can generate a network and can generate a dataloader.
+    The client receives train and test functions with pre-defined APIs.
 
     Parameters
     ----------
@@ -160,18 +236,37 @@ def get_client_generator(
         The path to the working directory.
     net_generator : NetGen
         The network generator.
+        Please respect the pydantic schema.
     dataloader_gen : ClientDataloaderGen
         The dataloader generator.
         Uses the client id to determine partition.
+        Please respect the pydantic schema.
+    train : TrainFunc
+        The train function.
+        Please respect the interface and pydantic schema.
+    test : TestFunc
+        The test function.
+        Please respect the interface and pydantic schema.
 
     Returns
     -------
-    Callable[[int | str], Client]
+    ClientGen
         The function which creates a new Client.
     """
-    return lambda i: Client(
-        i,
-        working_dir=working_dir,
-        net_generator=net_generator,
-        dataloader_gen=dataloader_gen,
-    )
+
+    def client_generator(cid: int | str) -> Client:
+        """Return a new Client.
+
+        Parameters
+        ----------
+        cid : int | str
+            The client's ID.
+
+        Returns
+        -------
+        Client
+            The new Client.
+        """
+        return Client(cid, working_dir, net_generator, dataloader_gen, train, test)
+
+    return client_generator

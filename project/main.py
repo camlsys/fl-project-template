@@ -19,13 +19,12 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 import wandb
-from project.client.mnist_client import (
-    get_client_generator as get_client_generator_mnist,
-)
-from project.fed.server.deterministic_client_manager import DeterministicClientManager
 
 # Only import from the project root
 # Never do a relative import nor one that assumes a given folder structure
+from project.client.client import get_client_generator
+from project.dispatch.dispatch import dispatch_config, dispatch_data, dispatch_train
+from project.fed.server.deterministic_client_manager import DeterministicClientManager
 from project.fed.server.wandb_history import WandbHistory
 from project.fed.server.wandb_server import WandbServer
 from project.fed.utils.utils import (
@@ -34,24 +33,7 @@ from project.fed.utils.utils import (
     get_weighted_avg_metrics_agg_fn,
     test_client,
 )
-from project.task.mnist_classification.dataset import get_dataloader_generators
-from project.task.mnist_classification.models import get_net as get_net_mnist
-from project.task.mnist_classification.train_test import (
-    get_fed_eval_fn as get_fed_eval_fn_mnist,
-)
-from project.task.mnist_classification.train_test import (
-    get_on_evaluate_config_fn as get_on_evaluate_config_fn_mnist,
-)
-from project.task.mnist_classification.train_test import (
-    get_on_fit_config_fn as get_on_fit_config_fn_mnist,
-)
-from project.types.common import (
-    ClientGen,
-    FedEvalFN,
-    NetGen,
-    OnEvaluateConfigFN,
-    OnFitConfigFN,
-)
+from project.types.common import ClientGen, FedEvalFN
 from project.utils.utils import (
     FileSystemManager,
     RayContextManager,
@@ -144,23 +126,18 @@ def main(cfg: DictConfig) -> None:
             )
             history = WandbHistory(cfg.use_wandb)
 
-            # Keep this style if you want to dynamically
-            # choose the functions using the Hydra config
-            net_generator: NetGen = get_net_mnist
-            get_client_dataloader, get_federated_dataloader = get_dataloader_generators(
-                Path(cfg.dataset.partition_dir)
+            net_generator, client_dataloader_gen, fed_dataloater_gen = dispatch_data(
+                cfg
             )
-            evaluate_fn: Optional[FedEvalFN] = get_fed_eval_fn_mnist(
-                net_generator, get_federated_dataloader(True, cfg.fed.fed_test_config)
-            )
+            train_func, test_func, get_fed_eval_fn = dispatch_train(cfg)
+            on_fit_config_fn, on_evaluate_config_fn = dispatch_config(cfg)
 
-            on_fit_config_fn: Optional[OnFitConfigFN] = get_on_fit_config_fn_mnist(
-                cast(dict, OmegaConf.to_container(cfg.client.fit_config))
-            )
-            on_evaluate_config_fn: Optional[
-                OnEvaluateConfigFN
-            ] = get_on_evaluate_config_fn_mnist(
-                cast(dict, OmegaConf.to_container(cfg.client.eval_config))
+            evaluate_fn: Optional[FedEvalFN] = get_fed_eval_fn(
+                net_generator,
+                fed_dataloater_gen,
+                test_func,
+                cfg.task.fed_test_config,
+                working_dir,
             )
 
             if cfg.fed.load_saved_parameters:
@@ -174,9 +151,11 @@ def main(cfg: DictConfig) -> None:
 
             initial_parameters = get_initial_parameters(
                 net_generator,
-                cast(dict, OmegaConf.to_container(cfg.fed.initial_parameters_config)),
-                parameters_path,
-                cfg.fed.parameters_round,
+                cast(
+                    dict, OmegaConf.to_container(cfg.task.net_config_initial_parameters)
+                ),
+                load_from=parameters_path,
+                round=cfg.fed.parameters_round,
             )
 
             # 4. Define your strategy
@@ -195,10 +174,10 @@ def main(cfg: DictConfig) -> None:
                 evaluate_fn=evaluate_fn,
                 accept_failures=False,
                 fit_metrics_aggregation_fn=get_weighted_avg_metrics_agg_fn(
-                    cfg.client.fit_metrics
+                    cfg.task.fit_metrics
                 ),
                 evaluate_metrics_aggregation_fn=get_weighted_avg_metrics_agg_fn(
-                    cfg.client.evaluate_metrics
+                    cfg.task.evaluate_metrics
                 ),
                 initial_parameters=initial_parameters,
             )
@@ -211,10 +190,12 @@ def main(cfg: DictConfig) -> None:
                 save_files_per_round=save_files_per_round,
             )
 
-            client_generator: ClientGen = get_client_generator_mnist(
+            client_generator: ClientGen = get_client_generator(
                 working_dir=working_dir,
                 net_generator=net_generator,
-                dataloader_gen=get_client_dataloader,
+                dataloader_gen=client_dataloader_gen,
+                train=train_func,
+                test=test_func,
             )
             seed_everything(adjusted_seed)
 

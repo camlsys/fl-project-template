@@ -4,14 +4,14 @@ from typing import Dict
 import torch.nn as nn
 
 
-class Model(nn.Module):
+class Net(nn.Module):
     """A PyTorch model."""
 
     # TODO: define your model here
     pass
 
 
-def get_model(config: Dict) -> nn.Module:
+def get_net(config: Dict) -> nn.Module:
     """Return a model instance.
 
     Args:
@@ -22,4 +22,4 @@ def get_model(config: Dict) -> nn.Module:
     nn.Module
         A PyTorch model.
     """
-    return Model()
+    return Net()

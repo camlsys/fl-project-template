@@ -1,2 +1,14 @@
---- null
-...
+---
+# Where to store data
+dataset_dir: null
+
+# Folder of client folders storing train and test
+# Optional, you can also use other methods to partition data to dataloaders
+# partition_dir: null
+
+# How large should the test set of each client
+# be relative to the train set
+val_ratio: 0.1
+
+# Seed for partition generation
+seed: 1337

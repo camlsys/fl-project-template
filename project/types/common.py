@@ -2,6 +2,7 @@
 
 Prefer these interfaces over ad-hoc inline definitions or concrete types.
 """
+from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
 
 import flwr as fl
@@ -30,6 +31,9 @@ FedDataloaderGen = Callable[[bool, Dict], DataLoader]
 # all changes in behaviour should be done via a closure
 ClientGen = Callable[[int | str], fl.client.NumPyClient]
 
+TrainFunc = Callable[[nn.Module, DataLoader, Dict, Path], Tuple[int, Dict]]
+TestFunc = Callable[[nn.Module, DataLoader, Dict, Path], Tuple[float, int, Dict]]
+
 # Type aliases for fit and eval results
 # discounting the Dict[str,Scalar] typing
 # of the original flwr types
@@ -46,7 +50,19 @@ FedEvalFN = Callable[
     Optional[Tuple[float, Dict]],
 ]
 
+FedEvalGen = Callable[
+    [NetGen, FedDataloaderGen, TestFunc, Dict, Path], Optional[FedEvalFN]
+]
+
 # Functions to generate config dictionaries
 # for fit and evaluate
 OnFitConfigFN = Callable[[int], Dict]
 OnEvaluateConfigFN = OnFitConfigFN
+
+# Structures to define a complete task setup
+# They can be varied indendently to some extent
+# Allows us to take advantage of hydra without
+# losing static type checking
+TrainStructure = Tuple[TrainFunc, TestFunc, FedEvalGen]
+DataStructure = Tuple[NetGen, ClientDataloaderGen, FedDataloaderGen]
+ConfigStructure = Tuple[OnFitConfigFN, OnEvaluateConfigFN]

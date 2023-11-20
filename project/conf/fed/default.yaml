@@ -16,21 +16,20 @@ gpus_per_client: 1
 # Seed for client selection
 seed: 1337
 
-# Configuration for the federated testing function
-# fed_test_config:
-  # batch_size: 32
-
 # Settings for loading the initial parameters 
 # used by the server
-load_saved_parameters: false
-parameters_folder: null
 
-# If reusing an output directory for checkpointing
-use_results_dir: false
-
+# If the server should try to load saved parameters, if it fails it will do the normal procedure of generating a random net
+# Leave on as true in case you need to enable checkpointing later on
+load_saved_parameters: true
 # The round from which to load the parameters
 # if null it will load the most recent round
 parameters_round: null
 
-# Configuration instructions for initial parameters
-initial_parameters_config: {}
+# Path to the folder where the parameters are located, leave null if you want to use automatic detecting with the next option
+parameters_folder: null
+
+# If reusing an output directory for checkpointing
+# it will automatically load the requested round from results/parameters
+# Leave as true unless you want to customise this behaviour
+use_results_dir: true

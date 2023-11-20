@@ -1,0 +1,50 @@
+---
+# These strings are constants used by the dispatcher to select functionality at runtime
+# Please implement all behaviour in the task-level dispatch.py file and then add the dispatch functions to the top-level dispatch.py
+# Choose the model and dataset
+model_and_data: MNIST_CNN
+# Choose the train, test and server fed_eval functions
+train_structure: MNIST
+
+# Client fit config
+fit_config:
+  # Net does not require any configuration
+  net_config: {}
+  # Dataloader requires batch_size
+  dataloader_config:
+    batch_size: 4
+  # The train function requires epochs and learning_rate
+  run_config:
+    epochs: 1
+    learning_rate: 0.03
+  # No extra config
+  extra: {}
+
+# Client eval config
+eval_config:
+  net_config: {}
+  # The testing function batch size can be as high as the GPU supports
+  dataloader_config:
+    batch_size: 8
+  # Unlike train, the mnist train function takes no parameters
+  run_config: {}
+  extra: {}
+
+# Configuration for the federated testing function
+# Follows the same conventions as the client config
+fed_test_config:
+  net_config: {}
+  # The testing function batch size can be as high as the GPU supports
+  dataloader_config:
+    batch_size: 8
+  # Unlike train, the mnist train function takes no parameters
+  run_config: {}
+  extra: {}
+
+# Configuration instructions for initial parameter 
+# generation
+net_config_initial_parameters: {}
+
+# The names of metrics you wish to aggregate
+fit_metrics: [train_loss]
+evaluate_metrics: [test_accuracy]

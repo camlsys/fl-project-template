@@ -1,0 +1,46 @@
+---
+# These strings are constants used by the dispatcher to select functionality at runtime
+# Please implement all behaviour in the task-level dispatch.py file and then add the dispatch functions to the top-level dispatch.py
+# Choose the model and dataset
+model_and_data: DEFAULT
+# Choose the train, test and server fed_eval functions
+train_structure: DEFAULT
+
+# Client fit config
+fit_config:
+  # Default net is empty and takes no args
+  net_config: {}
+  # Default dataloader is empty, added just for completeness
+  dataloader_config:
+    batch_size: 1
+  # Default train does nothing
+  run_config: {}
+  extra: {}
+
+# Client eval config
+eval_config:
+  net_config: {}
+  # The batch size for testing can be as high as the GPU supports
+  dataloader_config:
+    batch_size: 8
+  run_config: {}
+  extra: {}
+
+# Configuration for the federated testing function
+# Follows the same conventions as the client config
+fed_test_config:
+  net_config: {}
+  # Testing batch size can be as high as the GPU supports
+  dataloader_config:
+    batch_size: 8
+  run_config: {}
+  extra: {}
+
+# Configuration instructions for initial parameter 
+# generation
+net_config_initial_parameters: {}
+
+# The names of metrics you wish to aggregate
+# E.g., train_loss, test_accuracy
+fit_metrics: []
+evaluate_metrics: []

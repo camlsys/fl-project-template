@@ -1,23 +1,44 @@
 """MNIST training and testing functions, local and federated."""
 
-from typing import Dict, Optional, Sized, Tuple, cast
+from pathlib import Path
+from typing import Dict, Sized, Tuple, cast
 
 import torch
-from flwr.common import NDArrays
+from pydantic import BaseModel
 from torch import nn
 from torch.utils.data import DataLoader
 
-from project.fed.utils.utils import generic_set_parameters
-from project.types.common import FedEvalFN, NetGen, OnFitConfigFN
-from project.utils.utils import obtain_device
+from project.task.default.train_test import get_fed_eval_fn as get_default_fed_eval_fn
+from project.task.default.train_test import (
+    get_on_evaluate_config_fn as get_default_on_evaluate_config_fn,
+)
+from project.task.default.train_test import (
+    get_on_fit_config_fn as get_default_on_fit_config_fn,
+)
+
+
+class TrainConfig(BaseModel):
+    """Training configuration, allows '.' member acces and static checking.
+
+    Guarantees that all necessary components are present, fails early if config is
+    mismatched to client.
+    """
+
+    device: torch.device
+    epochs: int
+    learning_rate: float
+
+    class Config:
+        """Setting to allow any types, including library ones like torch.device."""
+
+        arbitrary_types_allowed = True
 
 
 def train(  # pylint: disable=too-many-arguments
     net: nn.Module,
     trainloader: DataLoader,
-    device: torch.device,
-    epochs: int,
-    learning_rate: float,
+    _config: Dict,
+    _working_dir: Path,
 ) -> Tuple[int, Dict]:
     """Train the network on the training set.
 
@@ -27,12 +48,10 @@ def train(  # pylint: disable=too-many-arguments
         The neural network to train.
     trainloader : DataLoader
         The DataLoader containing the data to train the network on.
-    device : torch.device
-        The device on which the model should be trained, either 'cpu' or 'cuda'.
-    epochs : int
-        The number of epochs the model should be trained for.
-    learning_rate : float
-        The learning rate for the SGD optimizer.
+    _config : Dict
+        The configuration for the training.
+        Contains the device, number of epochs and learning rate.
+        Static type checking is done by the TrainConfig class.
 
     Returns
     -------
@@ -43,16 +62,24 @@ def train(  # pylint: disable=too-many-arguments
     if len(cast(Sized, trainloader.dataset)) == 0:
         raise ValueError("Trainloader can't be 0, exiting...")
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(net.parameters(), lr=learning_rate, weight_decay=0.001)
+    config: TrainConfig = TrainConfig(**_config)
+    del _config
+
+    net.to(config.device)
     net.train()
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(
+        net.parameters(), lr=config.learning_rate, weight_decay=0.001
+    )
+
     final_epoch_per_sample_loss = 0.0
     num_correct = 0
-    for _ in range(epochs):
+    for _ in range(config.epochs):
         final_epoch_per_sample_loss = 0.0
         num_correct = 0
         for data, target in trainloader:
-            data, target = data.to(device), target.to(device)
+            data, target = data.to(config.device), target.to(config.device)
             optimizer.zero_grad()
             output = net(data)
             loss = criterion(output, target)
@@ -68,8 +95,23 @@ def train(  # pylint: disable=too-many-arguments
     }
 
 
+class TestConfig(BaseModel):
+    """Testing configuration, allows '.' member acces and static checking.
+
+    Guarantees that all necessary components are present, fails early if config is
+    mismatched to client.
+    """
+
+    device: torch.device
+
+    class Config:
+        """Setting to allow any types, including library ones like torch.device."""
+
+        arbitrary_types_allowed = True
+
+
 def test(
-    net: nn.Module, testloader: DataLoader, device: torch.device
+    net: nn.Module, testloader: DataLoader, _config: Dict, _working_dir: Path
 ) -> Tuple[float, int, Dict]:
     """Evaluate the network on the test set.
 
@@ -79,8 +121,10 @@ def test(
         The neural network to test.
     testloader : DataLoader
         The DataLoader containing the data to test the network on.
-    device : torch.device
-        The device on which the model should be tested, either 'cpu' or 'cuda'.
+    config : Dict
+        The configuration for the testing.
+        Contains the device.
+        Static type checking is done by the TestConfig class.
 
     Returns
     -------
@@ -91,12 +135,18 @@ def test(
     if len(cast(Sized, testloader.dataset)) == 0:
         raise ValueError("Testloader can't be 0, exiting...")
 
+    config: TestConfig = TestConfig(**_config)
+    del _config
+
+    net.to(config.device)
+    net.eval()
+
     criterion = nn.CrossEntropyLoss()
     correct, per_sample_loss = 0, 0.0
-    net.eval()
+
     with torch.no_grad():
         for images, labels in testloader:
-            images, labels = images.to(device), labels.to(device)
+            images, labels = images.to(config.device), labels.to(config.device)
             outputs = net(images)
             per_sample_loss += criterion(outputs, labels).item()
             _, predicted = torch.max(outputs.data, 1)
@@ -110,94 +160,8 @@ def test(
     )
 
 
-def get_fed_eval_fn(
-    net_generator: NetGen, testloader: DataLoader
-) -> Optional[FedEvalFN]:
-    """Get the federated evaluation function for MNIST.
-
-    Parameters
-    ----------
-    net_generator : NetGenerator
-        The function to generate the network.
-    testloader : DataLoader
-        The DataLoader containing the data to test the network on.
-
-    Returns
-    -------
-    Optional[FedEvalFN]
-        The evaluation function for the server
-        if the testloader is not empty, else None.
-    """
-    if len(cast(Sized, testloader.dataset)) == 0:
-        return None
-
-    def fed_eval_fn(
-        _server_round: int, parameters: NDArrays, config: Dict
-    ) -> Optional[Tuple[float, Dict]]:
-        """Evaluate the model on the given data.
-
-        Parameters
-        ----------
-        server_round : int
-            The current server round.
-        parameters : NDArrays
-            The parameters of the model to evaluate.
-        _config : Dict
-            The configuration for the evaluation.
-
-        Returns
-        -------
-        Optional[Tuple[float, Dict]]
-            The loss and the accuracy of the input model on the given data.
-        """
-        net = net_generator(config)
-        generic_set_parameters(net, parameters)
-        net.eval()
-        device = obtain_device()
-        net.to(device)
-        loss, num_samples, metrics = test(net, testloader, device)
-        return loss, metrics
-
-    return fed_eval_fn
-
-
-def get_on_fit_config_fn(fit_config: Dict) -> Optional[OnFitConfigFN]:
-    """MNIST on_fit_config_fn generator.
-
-    Parameters
-    ----------
-    fit_config : Dict
-        The configuration for the fit function.
-        Loaded dynamically from the config file.
-
-    Returns
-    -------
-    Optional[OnFitConfigFN]
-        The on_fit_config_fn for the server if the fit_config is not empty, else None.
-    """
-
-    def fit_config_fn(server_round: int) -> Dict:
-        """MNIST on_fit_config_fn.
-
-        Parameters
-        ----------
-        server_round : int
-            The current server round.
-            Passed to the client
-
-        Returns
-        -------
-        Dict
-            The configuration for the fit function.
-            Loaded dynamically from the config file.
-        """
-        # resolve and convert to python dict
-        fit_config["curr_round"] = server_round  # add round info
-        return fit_config
-
-    return fit_config_fn
-
-
-# Differences between the two will come
-# from the config file
-get_on_evaluate_config_fn = get_on_fit_config_fn
+# Use defaults as they are completely determined
+# by the other functions defined in mnist_classification
+get_fed_eval_fn = get_default_fed_eval_fn
+get_on_fit_config_fn = get_default_on_fit_config_fn
+get_on_evaluate_config_fn = get_default_on_evaluate_config_fn
