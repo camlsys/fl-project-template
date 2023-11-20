@@ -46,7 +46,7 @@ os.environ["HYDRA_FULL_ERROR"] = "1"
 os.environ["OC_CAUSE"] = "1"
 
 
-@hydra.main(config_path="conf", config_name="mnist", version_base=None)
+@hydra.main(config_path="conf", config_name="base", version_base=None)
 def main(cfg: DictConfig) -> None:
     """Run the baseline.
 
@@ -117,7 +117,7 @@ def main(cfg: DictConfig) -> None:
 
             # For checkpointed runs, adjust the seed
             # so different clients are sampled
-            adjusted_seed = cfg.fed.seed + fs_manager.checkpoint_index
+            adjusted_seed = cfg.fed.seed ^ fs_manager.checkpoint_index
 
             save_parameters_to_file = get_save_parameters_to_file(working_dir)
 

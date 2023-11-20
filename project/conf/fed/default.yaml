@@ -1,6 +1,6 @@
 ---
 # Federated setup
-num_rounds: 1
+num_rounds: 5
 num_total_clients: 10
 num_clients_per_round: 2
 num_evaluate_clients_per_round: 2
@@ -11,7 +11,7 @@ enable_resampling: false
 
 # Client resources
 cpus_per_client: 10
-gpus_per_client: 1
+gpus_per_client: 0
 
 # Seed for client selection
 seed: 1337
