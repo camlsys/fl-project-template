@@ -1,5 +1,5 @@
 
-# [CaMLSys](https://mlsys.cst.cam.ac.uk/) Federated Learning Research Template using [Flower, [Hydra](https://github.com/facebookresearch/hydra), and [Wandb](https://wandb.ai/site)](https://wandb.ai/site)
+# [CaMLSys](https://mlsys.cst.cam.ac.uk/) Federated Learning Research Template using [Flower](https://github.com/adap/flower), [Hydra](https://github.com/facebookresearch/hydra), and [Wandb](https://wandb.ai/site)
 
 > Note: If you use this template in your work, please reference it and cite the [Flower](https://arxiv.org/abs/2007.14390) paper.
 
