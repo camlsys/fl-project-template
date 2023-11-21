@@ -12,12 +12,6 @@ exclude: |
   )$
   
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.6
-    hooks:
-        - id: ruff
-          types_or: [python, pyi, jupyter]
-          args: [  --preview]
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
@@ -33,6 +27,12 @@ repos:
     rev: 1.15.0
     hooks:
       - id: yamlfix
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.6
+    hooks:
+        - id: ruff
+          types_or: [python, pyi, jupyter]
+          args: [  --preview, --ignore, I001]
   - repo: https://github.com/psf/black
     rev: 23.11.0
     hooks:
