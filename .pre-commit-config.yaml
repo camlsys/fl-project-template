@@ -73,5 +73,5 @@ ci:
   autoupdate_branch: ''
   autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
   autoupdate_schedule: weekly
-  skip: [ruff_fix, mypy]
+  skip: [mypy]
   submodules: false
