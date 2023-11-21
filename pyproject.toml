@@ -157,11 +157,11 @@ exclude = [
 [tool.ruff]
 target-version = "py311"
 line-length = 88
-select = ["A", "D", "E", "F", "W", "B", "ISC", "N", "ANN",
+select = ["A", "D", "E", "F", "W", "B", "I", "ISC", "N", "ANN",
 "C4", "UP", "COM", "EXE", "FA", "ISC", "ICN", "INP", "PIE", "T20", 
 "Q", "RET", "SLOT", "SIM", "TID", "ARG", "PTH", "TD", "PD", "PGH", 
 "PL", "TRY","NPY", "PERF", "FURB", "RUF" ]
-fixable = ["A", "D", "E", "F", "W", "B", "ISC", "N", "ANN", 
+fixable = ["A", "D", "E", "F", "W", "B", "I", "ISC", "N", "ANN", 
 "C4", "UP", "COM", "EXE", "FA", "ISC", "ICN", "INP", "PIE", "T20",
 "Q", "RET", "SLOT", "SIM", "TCH", "ARG", "PTH", "TD", "PD", "PGH",
 "PL", "TRY", "NPY", "PERF", "FURB", "RUF"]
