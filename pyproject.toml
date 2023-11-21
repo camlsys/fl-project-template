@@ -70,7 +70,6 @@ identify = "^2.5.31"
 
 
 [tool.poetry.dev-dependencies]
-isort = "==5.12.0"
 black = { version = "==23.1.0", extras = ["jupyter"] }
 docformatter = "==1.7.5"
 mypy = "==1.6.1"
@@ -81,16 +80,6 @@ pytest = "==6.2.4"
 pytest-watch = "==4.2.0"
 types-requests = "==2.27.7"
 yamlfix = "^1.15.0"
-
-[tool.isort]
-profile = "black"
-line_length = 88
-indent = "    "
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-lines_after_imports = -1
 
 [tool.black]
 line-length = 88
@@ -168,11 +157,11 @@ exclude = [
 [tool.ruff]
 target-version = "py311"
 line-length = 88
-select = ["A", "D", "E", "F", "W", "B", "ISC", "N", "ANN",
+select = ["A", "D", "E", "F", "W", "B", "I", "ISC", "N", "ANN",
 "C4", "UP", "COM", "EXE", "FA", "ISC", "ICN", "INP", "PIE", "T20", 
 "Q", "RET", "SLOT", "SIM", "TID", "ARG", "PTH", "TD", "PD", "PGH", 
 "PL", "TRY","NPY", "PERF", "FURB", "RUF" ]
-fixable = ["A", "D", "E", "F", "W", "B", "ISC", "N", "ANN", 
+fixable = ["A", "D", "E", "F", "W", "B", "I", "ISC", "N", "ANN", 
 "C4", "UP", "COM", "EXE", "FA", "ISC", "ICN", "INP", "PIE", "T20",
 "Q", "RET", "SLOT", "SIM", "TCH", "ARG", "PTH", "TD", "PD", "PGH",
 "PL", "TRY", "NPY", "PERF", "FURB", "RUF"]

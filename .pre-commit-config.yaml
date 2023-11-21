@@ -18,11 +18,6 @@ repos:
         - id: ruff
           types_or: [python, pyi, jupyter]
           args: [ --fix, --preview]
-  - repo: https://github.com/pycqa/isort
-    rev: 5.12.0
-    hooks:
-      - id: isort
-        name: isort (python)
   - repo: https://github.com/PyCQA/docformatter
     rev: v1.7.5
     hooks:
@@ -65,5 +60,5 @@ ci:
   autoupdate_branch: ''
   autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
   autoupdate_schedule: weekly
-  skip: [mypy]
+  skip: [isort, mypy]
   submodules: false
