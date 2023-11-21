@@ -25,7 +25,7 @@ While these tools can be combined in an ad-hoc manner, this template intends to 
     - Metric collection and aggregation require no additional implementation. 
 - Automatically handles logging, saving, and checkpointing, which integrate natively and seamlessly with Wandb and Hydra. This enables sequential re-launches of the same job on clusters using time-limited schedulers.
 - Provides deterministic seeded client selection while taking into account the current checkpoint. 
-- Provides a type-safe means of selecting which ML task to run using Hydra's config system without the drawbacks of the untyped mechanism provided by Hydra.
+- Provides a static means of selecting which ML task to run using Hydra's config system without the drawbacks of the untyped mechanism provided by Hydra.
 - Enforces good coding standards by default using isort, black, docformatter, ruff and mypy integrated with [pre-commit](https://pre-commit.com/). [Pydantic](https://docs.pydantic.dev/latest/) is also used to validate configuration data for generating models, creating dataloaders, training clients, etc.
 
 ### What this template does not do:

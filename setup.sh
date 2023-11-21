@@ -19,7 +19,6 @@ else
   echo "Poetry is already installed"
 fi
 
-#!/bin/bash
 
 if ! [ -x "$(command -v pyenv)" ]; then
   if [ -z "$VPYENV_ROOT" ]; then

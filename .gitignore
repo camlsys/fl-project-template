@@ -5,6 +5,7 @@ outputs/*
 multirun/*
 wandb/*
 run_scripts/launch_template.sh
+run_scripts/launch_mnist.sh
 
 # Slurm logs
 slurm-*.out
