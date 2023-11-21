@@ -1,63 +1,36 @@
 
 # Extended Readme
 
-> The baselines are expected to run in a machine running Ubuntu 22.04
+> Scientific projects are expected to run in a machine with Ubuntu 22.04
 
-While `README.md` should include information about the baseline you implement and how to run it, this _extended_ readme provides info on what's the expected directory structure for a new baseline and more generally the instructions to follow before your baseline can be merged into the Flower repository. Please follow closely these instructions. It is likely that you have already completed steps 1-2.
+While `README.md` should include information about the project you implement and how to run it, this _extended_ readme provides more generally the instructions to follow before your work can be run on the CaMLSys cluster or used collaboratively. Please follow closely these instructions. It is likely that you have already completed steps 1-2.
 
-1. Fork the Flower repository and clone it.
-2. Navigate to the `baselines/` directory and from there run:
+1. Click use this template on the Github Page.
+2. Run ```./setup.sh``` to set up the template project.
+3. Add your additional dependencies to the `pyproject.toml` (see below a few examples on how to do it). Read more about Poetry below in this `EXTENDED_README.md`.
+4. Regularly check that your coding style and the documentation you add follow good coding practices. To test whether your code meets the requirements, please run ``./setup.sh`` or
     ```bash
-    # This will create a new directory with the same structure as this `baseline_template` directory.
-    ./dev/create-baseline.sh <baseline-name>
-    ``` 
-3. All your code and configs should go into a sub-directory with the same name as the name of your baseline.
-    *    The sub-directory contains a series of Python scripts that you can edit. Please stick to these files and consult with us if you need additional ones.
-    *    There is also a basic config structure in `<baseline-name>/conf` ready be parsed by [Hydra](https://hydra.cc/) when executing your `main.py`.
-4. Therefore, the directory structure in your baseline should look like:
-    ```bash
-    baselines/<baseline-name>
-                    ├── README.md # describes your baseline and everything needed to use it
-                    ├── EXTENDED_README.md # to remove before creating your PR
-                    ├── pyproject.toml # details your Python environment
-                    └── <baseline-name>
-                                ├── *.py # several .py files including main.py and __init__.py
-                                └── conf
-                                     └── *.yaml # one or more Hydra config files
-
+    poetry run pre-commit install 
     ```
-> :warning: Make sure the variable `name` in `pyproject.toml` is set to the name of the sub-directory containing all your code.
-
-5. Add your dependencies to the `pyproject.toml` (see below a few examples on how to do it). Read more about Poetry below in this `EXTENDED_README.md`.
-6. Regularly check that your coding style and the documentation you add follow good coding practices. To test whether your code meets the requirements, please run the following:
+5. If you update the `.pre-commit-config.yaml` file or change the tools in the toml file you should run the following. Feel free to run this whenever you need a sanity check that the entire codebase is up to standard.
     ```bash
-    # After activating your environment and from your baseline's directory
-    cd .. # to go to the top-level directory of all baselines
-    ./dev/test-baseline.sh <baseline-name>
-    ./dev/test-baseline-structure.sh <baseline-name>
+    poetry run pre-commit run --all-files --hook-stage push
     ```
-    Both `test-baseline.sh` and `test-baseline-structure.sh` will also be automatically run when you create a PR, and both tests need to pass for the baseline to be merged.
-    To automatically solve some formatting issues and apply easy fixes, please run the formatting script:
-    ```bash
-    # After activating your environment and from your baseline's directory
-    cd .. # to go to the top-level directory of all baselines
-    ./dev/format-baseline.sh <baseline-name>
-    ```
-7. Ensure that the Python environment for your baseline can be created without errors by simply running `poetry install` and that this is properly described later when you complete the `Environment Setup` section in `README.md`. This is specially important if your environment requires additional steps after doing `poetry install`.
-8. Ensure that your baseline runs with default arguments by running `poetry run python -m <baseline-name>.main`. Then, describe this and other forms of running your code in the `Running the Experiments` section in `README.md`.
-9. Once your code is ready and you have checked:
+6. Ensure that the Python environment for your project can be created without errors by simply running `poetry install` and that this is properly described later when you complete the `Setup` section in `README.md`. This is specially important if your environment requires additional steps after doing `poetry install` or ```./setup.sh```.
+7. Ensure that your project runs with default arguments by running `poetry run python -m project.main`. Then, describe this and other forms of running your code in the `Using the Project` section in `README.md`.
+8. Once your code is ready and you have checked:
     *    that following the instructions in your `README.md` the Python environment can be created correctly
 
-    *    that running the code following your instructions can reproduce the experiments in the paper
+    *    that running the code following your instructions can reproduce the experiments you setup for your paper
    
-   , then you just need to create a Pull Request (PR) to kickstart the process of merging your baseline into the Flower repository.
+   ,then you just need to invite collaborators to your project if this is in a private repo or publish it to the camlsys github if it is meant as an artefact. If you feel like some improvements can be shared across projects please open a PR for the template. 
 
-> Once you are happy to merge your baseline contribution, please delete this `EXTENDED_README.md` file.
+> Once you are happy with your project please delete this `EXTENDED_README.md` file.
 
 
 ## About Poetry
 
-We use Poetry to manage the Python environment for each individual baseline. You can follow the instructions [here](https://python-poetry.org/docs/) to install Poetry in your machine. 
+We use Poetry to manage the Python environment for each individual project. You can follow the instructions [here](https://python-poetry.org/docs/) to install Poetry in your machine. The ``./setup.sh`` script already handles all of these steps for you, however, you need to understand how they work to properly change the template.
 
 
 ### Specifying a Python Version (optional)
@@ -66,10 +39,10 @@ By default, Poetry will use the Python version in your system. In some settings,
 curl https://pyenv.run | bash # then, don't forget links to your .bashrc/.zshrc
 ```
 
-You can then install any Python version with `pyenv install <python-version>` (e.g. `pyenv install 3.9.17`). Then, in order to use that version for your baseline, you'd do the following:
+You can then install any Python version with `pyenv install <python-version>` (e.g. `pyenv install 3.9.17`). Then, in order to use that version for your project, you'd do the following:
 
 ```bash
-# cd to your baseline directory (i.e. where the `pyproject.toml` is)
+# cd to your project directory (i.e. where the `pyproject.toml` is)
 pyenv local <python-version>
 
 # set that version for poetry
@@ -79,7 +52,7 @@ poetry env use <python-version>
 ```
 
 ### Installing Your Environment
-With the Poetry tool already installed, you can create an environment for this baseline with commands:
+With the Poetry tool already installed, you can create an environment for this project with commands:
 ```bash
 # run this from the same directory as the `pyproject.toml` file is
 poetry install
@@ -94,7 +67,7 @@ poetry add tqdm==4.65.0
 # If you already have a requirements.txt, you can add all those packages (but ensure you have fixed the version) in one go as follows:
 poetry add $( cat requirements.txt )
 ```
-With each `poetry add` command, the `pyproject.toml` gets automatically updated so you don't need to keep that `requirements.txt` as part of this baseline.
+With each `poetry add` command, the `pyproject.toml` gets automatically updated so you don't need to keep that `requirements.txt` as part of this project.
 
 
 More critically however, is adding your ML framework of choice to the list of dependencies. For some frameworks you might be able to do so with the `poetry add` command. Check [the Poetry documentation](https://python-poetry.org/docs/cli/#add) for how to add packages in various ways. For instance, let's say you want to use PyTorch:
