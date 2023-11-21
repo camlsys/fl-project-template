@@ -127,3 +127,6 @@ Two tasks are already implemented:
 > :warning: Prefer changing only the task module when possible.
 
 
+## Enabling Pre-commit CI
+
+To enable Continous Integration of your project via Pre-commit, all you need to do is allow pre-commit for a given repo from the [github marketplace](https://github.com/marketplace/pre-commit-ci/plan/MDIyOk1hcmtldHBsYWNlTGlzdGluZ1BsYW42MTI2#plan-6126). You should be aware that this is free only for public open-source repositories. 
