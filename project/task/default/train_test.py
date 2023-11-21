@@ -65,7 +65,9 @@ def train(  # pylint: disable=too-many-arguments
         the loss, and the accuracy of the input model on the given data.
     """
     if len(cast(Sized, trainloader.dataset)) == 0:
-        raise ValueError("Trainloader can't be 0, exiting...")
+        raise ValueError(
+            "Trainloader can't be 0, exiting...",
+        )
 
     config: TrainConfig = TrainConfig(**_config)
     del _config
@@ -92,7 +94,10 @@ class TestConfig(BaseModel):
 
 
 def test(
-    net: nn.Module, testloader: DataLoader, _config: dict, _working_dir: Path
+    net: nn.Module,
+    testloader: DataLoader,
+    _config: dict,
+    _working_dir: Path,
 ) -> tuple[float, int, dict]:
     """Evaluate the network on the test set.
 
@@ -114,7 +119,9 @@ def test(
         and the accuracy of the input model on the given data.
     """
     if len(cast(Sized, testloader.dataset)) == 0:
-        raise ValueError("Testloader can't be 0, exiting...")
+        raise ValueError(
+            "Testloader can't be 0, exiting...",
+        )
 
     config: TestConfig = TestConfig(**_config)
     del _config
@@ -154,10 +161,15 @@ def get_fed_eval_fn(
     config: ClientConfig = ClientConfig(**_config)
     del _config
 
-    testloader = fed_dataloater_generator(True, config.dataloader_config)
+    testloader = fed_dataloater_generator(
+        True,
+        config.dataloader_config,
+    )
 
     def fed_eval_fn(
-        _server_round: int, parameters: NDArrays, fake_config: dict
+        _server_round: int,
+        parameters: NDArrays,
+        fake_config: dict,
     ) -> tuple[float, dict] | None:
         """Evaluate the model on the given data.
 
@@ -182,8 +194,11 @@ def get_fed_eval_fn(
         if len(cast(Sized, testloader.dataset)) == 0:
             return None
 
-        loss, num_samples, metrics = test_func(
-            net, testloader, config.run_config, working_dir
+        loss, _num_samples, metrics = test_func(
+            net,
+            testloader,
+            config.run_config,
+            working_dir,
         )
         return loss, metrics
 

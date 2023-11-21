@@ -61,7 +61,9 @@ def train(  # pylint: disable=too-many-arguments
         the loss, and the accuracy of the input model on the given data.
     """
     if len(cast(Sized, trainloader.dataset)) == 0:
-        raise ValueError("Trainloader can't be 0, exiting...")
+        raise ValueError(
+            "Trainloader can't be 0, exiting...",
+        )
 
     config: TrainConfig = TrainConfig(**_config)
     del _config
@@ -71,7 +73,9 @@ def train(  # pylint: disable=too-many-arguments
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(
-        net.parameters(), lr=config.learning_rate, weight_decay=0.001
+        net.parameters(),
+        lr=config.learning_rate,
+        weight_decay=0.001,
     )
 
     final_epoch_per_sample_loss = 0.0
@@ -80,7 +84,12 @@ def train(  # pylint: disable=too-many-arguments
         final_epoch_per_sample_loss = 0.0
         num_correct = 0
         for data, target in trainloader:
-            data, target = data.to(config.device), target.to(config.device)
+            data, target = (
+                data.to(
+                    config.device,
+                ),
+                target.to(config.device),
+            )
             optimizer.zero_grad()
             output = net(data)
             loss = criterion(output, target)
@@ -90,8 +99,9 @@ def train(  # pylint: disable=too-many-arguments
             optimizer.step()
 
     return len(cast(Sized, trainloader.dataset)), {
-        "train_loss": final_epoch_per_sample_loss
-        / len(cast(Sized, trainloader.dataset)),
+        "train_loss": final_epoch_per_sample_loss / len(
+            cast(Sized, trainloader.dataset)
+        ),
         "train_accuracy": float(num_correct) / len(cast(Sized, trainloader.dataset)),
     }
 
@@ -112,7 +122,10 @@ class TestConfig(BaseModel):
 
 
 def test(
-    net: nn.Module, testloader: DataLoader, _config: dict, _working_dir: Path
+    net: nn.Module,
+    testloader: DataLoader,
+    _config: dict,
+    _working_dir: Path,
 ) -> tuple[float, int, dict]:
     """Evaluate the network on the test set.
 
@@ -134,7 +147,9 @@ def test(
         and the accuracy of the input model on the given data.
     """
     if len(cast(Sized, testloader.dataset)) == 0:
-        raise ValueError("Testloader can't be 0, exiting...")
+        raise ValueError(
+            "Testloader can't be 0, exiting...",
+        )
 
     config: TestConfig = TestConfig(**_config)
     del _config
@@ -147,9 +162,17 @@ def test(
 
     with torch.no_grad():
         for images, labels in testloader:
-            images, labels = images.to(config.device), labels.to(config.device)
+            images, labels = (
+                images.to(
+                    config.device,
+                ),
+                labels.to(config.device),
+            )
             outputs = net(images)
-            per_sample_loss += criterion(outputs, labels).item()
+            per_sample_loss += criterion(
+                outputs,
+                labels,
+            ).item()
             _, predicted = torch.max(outputs.data, 1)
             correct += (predicted == labels).sum().item()
 
@@ -157,7 +180,9 @@ def test(
     return (
         per_sample_loss / len(cast(Sized, testloader.dataset)),
         len(cast(Sized, testloader.dataset)),
-        {"test_accuracy": float(correct) / len(cast(Sized, testloader.dataset))},
+        {
+            "test_accuracy": float(correct) / len(cast(Sized, testloader.dataset)),
+        },
     )
 
 

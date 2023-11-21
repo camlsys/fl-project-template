@@ -30,7 +30,9 @@ from project.task.mnist_classification.train_test import get_fed_eval_fn, test, 
 from project.types.common import DataStructure, TrainStructure
 
 
-def dispatch_train(cfg: DictConfig) -> TrainStructure | None:
+def dispatch_train(
+    cfg: DictConfig,
+) -> TrainStructure | None:
     """Dispatch the train/test and fed test functions based on the config file.
 
     Do not throw any errors based on not finding a given attribute
@@ -53,7 +55,10 @@ def dispatch_train(cfg: DictConfig) -> TrainStructure | None:
         Return None if you cannot match the cfg.
     """
     # Select the value for the key with None default
-    train_structure: str | None = cfg.get("task", {}).get("train_structure", None)
+    train_structure: str | None = cfg.get("task", {}).get(
+        "train_structure",
+        None,
+    )
 
     # Only consider not None and uppercase matches
     if train_structure is not None and train_structure.upper() == "MNIST":
@@ -87,27 +92,44 @@ def dispatch_data(cfg: DictConfig) -> DataStructure | None:
     """
     # Select the value for the key with {} default at nested dicts
     # and None default at the final key
-    client_model_and_data: str | None = cfg.get("task", {}).get("model_and_data", None)
+    client_model_and_data: str | None = cfg.get(
+        "task",
+        {},
+    ).get("model_and_data", None)
 
     # Select the partition dir
     # if it does not exist data cannot be loaded
     # for MNIST and the dispatch should return None
-    partition_dir: str | None = cfg.get("dataset", {}).get("partition_dir", None)
+    partition_dir: str | None = cfg.get("dataset", {}).get(
+        "partition_dir",
+        None,
+    )
 
     # Only consider situations where both are not None
     # otherwise data loading would failr later
     if client_model_and_data is not None and partition_dir is not None:
         # Obtain the dataloader generators
         # for the provided partition dir
-        client_dataloader_gen, fed_dataloater_gen = get_dataloader_generators(
-            Path(partition_dir)
+        (
+            client_dataloader_gen,
+            fed_dataloater_gen,
+        ) = get_dataloader_generators(
+            Path(partition_dir),
         )
 
         # Case insensitive matches
         if client_model_and_data.upper() == "MNIST_CNN":
-            return get_net, client_dataloader_gen, fed_dataloater_gen
+            return (
+                get_net,
+                client_dataloader_gen,
+                fed_dataloater_gen,
+            )
         elif client_model_and_data.upper() == "MNIST_LR":
-            return get_logistic_regression, client_dataloader_gen, fed_dataloater_gen
+            return (
+                get_logistic_regression,
+                client_dataloader_gen,
+                fed_dataloater_gen,
+            )
 
     # Cannot match, send to next dispatch in chain
     return None

@@ -10,7 +10,6 @@ partitioned, please include all those functions and logic in the
 You can use all those functions from functions/methods defined here of course.
 """
 
-
 from collections import defaultdict
 
 import torch
@@ -48,7 +47,11 @@ class FedDataloaderConfig(BaseModel):
         arbitrary_types_allowed = True
 
 
-def get_client_dataloader(cid: str | int, test: bool, _config: dict) -> DataLoader:
+def get_client_dataloader(
+    cid: str | int,
+    test: bool,
+    _config: dict,
+) -> DataLoader:
     """Return a DataLoader for a client's dataset.
 
     Parameters
@@ -66,29 +69,49 @@ def get_client_dataloader(cid: str | int, test: bool, _config: dict) -> DataLoad
         The DataLoader for the client's dataset
     """
     # Create an empty TensorDataset for ilustration purposes
-    config: ClientDataloaderConfig = ClientDataloaderConfig(**_config)
+    config: ClientDataloaderConfig = ClientDataloaderConfig(
+        **_config,
+    )
     del _config
 
     # You should load/create one train/test dataset per client
     if not test:
-        empty_trainset_dict: dict[str | int, Dataset] = defaultdict(
-            lambda: TensorDataset(torch.Tensor([1]), torch.Tensor([1]))
+        empty_trainset_dict: dict[
+            str | int,
+            Dataset,
+        ] = defaultdict(
+            lambda: TensorDataset(
+                torch.Tensor([1]),
+                torch.Tensor([1]),
+            ),
         )
         # Choose the client dataset based on the client id and train/test
         dataset = empty_trainset_dict[cid]
     else:
-        empty_testest_dict: dict[str | int, Dataset] = defaultdict(
-            lambda: TensorDataset(torch.Tensor([1]), torch.Tensor([1]))
+        empty_testest_dict: dict[
+            str | int,
+            Dataset,
+        ] = defaultdict(
+            lambda: TensorDataset(
+                torch.Tensor([1]),
+                torch.Tensor([1]),
+            ),
         )
         # Choose the client dataset based on the client id and train/test
         dataset = empty_testest_dict[cid]
 
     return DataLoader(
-        dataset, batch_size=config.batch_size, shuffle=not test, drop_last=True
+        dataset,
+        batch_size=config.batch_size,
+        shuffle=not test,
+        drop_last=True,
     )
 
 
-def get_fed_dataloader(test: bool, _config: dict) -> DataLoader:
+def get_fed_dataloader(
+    test: bool,
+    _config: dict,
+) -> DataLoader:
     """Return a DataLoader for federated train/test sets.
 
     Parameters
@@ -103,19 +126,30 @@ def get_fed_dataloader(test: bool, _config: dict) -> DataLoader:
         DataLoader
         The DataLoader for the federated dataset
     """
-    config: FedDataloaderConfig = FedDataloaderConfig(**_config)
+    config: FedDataloaderConfig = FedDataloaderConfig(
+        **_config,
+    )
     del _config
 
     # Create one train/test empty dataset for the server
     if not test:
-        empty_trainset: Dataset = TensorDataset(torch.Tensor([1]), torch.Tensor([1]))
+        empty_trainset: Dataset = TensorDataset(
+            torch.Tensor([1]),
+            torch.Tensor([1]),
+        )
         # Choose the server dataset based on the train/test
         dataset = empty_trainset
     else:
-        empty_testet: Dataset = TensorDataset(torch.Tensor([1]), torch.Tensor([1]))
+        empty_testet: Dataset = TensorDataset(
+            torch.Tensor([1]),
+            torch.Tensor([1]),
+        )
         # Choose the server dataset based on the train/test
         dataset = empty_testet
 
     return DataLoader(
-        dataset, batch_size=config.batch_size, shuffle=not test, drop_last=True
+        dataset,
+        batch_size=config.batch_size,
+        shuffle=not test,
+        drop_last=True,
     )

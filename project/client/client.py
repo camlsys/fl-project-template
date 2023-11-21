@@ -2,12 +2,13 @@
 
 Make sure the model and dataset are not loaded before the fit function.
 """
+
 from pathlib import Path
 
 import flwr as fl
-import torch.nn as nn
 from flwr.common import NDArrays
 from pydantic import BaseModel
+from torch import nn
 
 from project.fed.utils.utils import generic_get_parameters, generic_set_parameters
 from project.types.common import (
@@ -114,15 +115,26 @@ class Client(fl.client.NumPyClient):
         del _config
 
         config.run_config["device"] = obtain_device()
-        self.net = self.set_parameters(parameters, config.net_config)
-        trainloader = self.dataloader_gen(self.cid, False, config.dataloader_config)
+        self.net = self.set_parameters(
+            parameters,
+            config.net_config,
+        )
+        trainloader = self.dataloader_gen(
+            self.cid,
+            False,
+            config.dataloader_config,
+        )
         num_samples, metrics = self.train(
             self.net,
             trainloader,
             config.run_config,
             self.working_dir,
         )
-        return generic_get_parameters(self.net), num_samples, metrics
+        return (
+            generic_get_parameters(self.net),
+            num_samples,
+            metrics,
+        )
 
     def evaluate(
         self,
@@ -151,8 +163,15 @@ class Client(fl.client.NumPyClient):
         del _config
 
         config.run_config["device"] = obtain_device()
-        self.net = self.set_parameters(parameters, config.net_config)
-        testloader = self.dataloader_gen(self.cid, True, config.dataloader_config)
+        self.net = self.set_parameters(
+            parameters,
+            config.net_config,
+        )
+        testloader = self.dataloader_gen(
+            self.cid,
+            True,
+            config.dataloader_config,
+        )
         loss, num_samples, metrics = self.test(
             self.net,
             testloader,
@@ -177,16 +196,21 @@ class Client(fl.client.NumPyClient):
             The parameters of the network.
         """
         if self.net is None:
-            raise ValueError(
-                """Network is None.
+            except_str: str = """Network is None.
                 Call set_parameters first and
                 do not use this template without a get_initial_parameters function.
-                """
+            """
+            raise ValueError(
+                except_str,
             )
 
         return generic_get_parameters(self.net)
 
-    def set_parameters(self, parameters: NDArrays, config: dict) -> nn.Module:
+    def set_parameters(
+        self,
+        parameters: NDArrays,
+        config: dict,
+    ) -> nn.Module:
         """Set client parameters.
 
         First generated the network. Only call this in fit/eval.
@@ -204,7 +228,11 @@ class Client(fl.client.NumPyClient):
             The network with the new parameters.
         """
         net = self.net_generator(config)
-        generic_set_parameters(net, parameters, to_copy=False)
+        generic_set_parameters(
+            net,
+            parameters,
+            to_copy=False,
+        )
         return net
 
     def __repr__(self) -> str:
@@ -266,6 +294,13 @@ def get_client_generator(
         Client
             The new Client.
         """
-        return Client(cid, working_dir, net_generator, dataloader_gen, train, test)
+        return Client(
+            cid,
+            working_dir,
+            net_generator,
+            dataloader_gen,
+            train,
+            test,
+        )
 
     return client_generator

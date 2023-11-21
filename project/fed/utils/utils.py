@@ -6,8 +6,7 @@ from collections import OrderedDict, defaultdict
 from collections.abc import Callable
 from pathlib import Path
 
-import torch as torch
-import torch.nn as nn
+import torch
 from flwr.common import (
     NDArrays,
     Parameters,
@@ -15,11 +14,16 @@ from flwr.common import (
     ndarrays_to_parameters,
     parameters_to_ndarrays,
 )
+from torch import nn
 
 from project.types.common import ClientGen, NetGen, OnEvaluateConfigFN, OnFitConfigFN
 
 
-def generic_set_parameters(net: nn.Module, parameters: NDArrays, to_copy=True) -> None:
+def generic_set_parameters(
+    net: nn.Module,
+    parameters: NDArrays,
+    to_copy: bool = True,
+) -> None:
     """Set the parameters of a network.
 
     Parameters
@@ -35,9 +39,13 @@ def generic_set_parameters(net: nn.Module, parameters: NDArrays, to_copy=True) -
     -------
     None
     """
-    params_dict = zip(net.state_dict().keys(), parameters, strict=True)
+    params_dict = zip(
+        net.state_dict().keys(),
+        parameters,
+        strict=True,
+    )
     state_dict = OrderedDict(
-        {k: torch.Tensor(v if not to_copy else v.copy()) for k, v in params_dict}
+        {k: torch.Tensor(v if not to_copy else v.copy()) for k, v in params_dict},
     )
     net.load_state_dict(state_dict, strict=True)
 
@@ -85,13 +93,19 @@ def load_parameters_from_file(path: Path) -> Parameters:
                 data = f.read(length)
                 byte_data.append(data)
 
-        return Parameters(tensors=byte_data, tensor_type="numpy.ndarray")
+        return Parameters(
+            tensors=byte_data,
+            tensor_type="numpy.ndarray",
+        )
 
     raise ValueError(f"Unknown parameter format: {path}")
 
 
 def get_initial_parameters(
-    net_generator: NetGen, config: dict, load_from: Path | None, round=int | None
+    net_generator: NetGen,
+    config: dict,
+    load_from: Path | None,
+    server_round: int | None,
 ) -> Parameters:
     """Get the initial parameters for the network.
 
@@ -110,20 +124,33 @@ def get_initial_parameters(
         The parameters.
     """
     if load_from is None:
-        log(logging.INFO, "Generating initial parameters with config: %s", config)
-        return ndarrays_to_parameters(generic_get_parameters(net_generator(config)))
+        log(
+            logging.INFO,
+            "Generating initial parameters with config: %s",
+            config,
+        )
+        return ndarrays_to_parameters(
+            generic_get_parameters(net_generator(config)),
+        )
     try:
-        if round is not None:
+        if server_round is not None:
             # Load specific round parameters
-            load_from = load_from / f"parameters_{round}.bin"
+            load_from = load_from / f"parameters_{server_round}.bin"
         else:
             # Load only the most recent parameters
             load_from = max(
                 Path(load_from).glob("parameters_*.bin"),
-                key=lambda f: (int(f.stem.split("_")[1]), int(f.stem.split("_")[2])),
+                key=lambda f: (
+                    int(f.stem.split("_")[1]),
+                    int(f.stem.split("_")[2]),
+                ),
             )
 
-        log(logging.INFO, "Loading initial parameters from: %s", load_from)
+        log(
+            logging.INFO,
+            "Loading initial parameters from: %s",
+            load_from,
+        )
 
         return load_parameters_from_file(load_from)
     except (
@@ -134,13 +161,24 @@ def get_initial_parameters(
         EOFError,
         IsADirectoryError,
     ):
-        log(logging.INFO, f"Loading parameters failed from: {load_from}")
-        log(logging.INFO, "Generating initial parameters with config: %s", config)
+        log(
+            logging.INFO,
+            f"Loading parameters failed from: {load_from}",
+        )
+        log(
+            logging.INFO,
+            "Generating initial parameters with config: %s",
+            config,
+        )
 
-        return ndarrays_to_parameters(generic_get_parameters(net_generator(config)))
+        return ndarrays_to_parameters(
+            generic_get_parameters(net_generator(config)),
+        )
 
 
-def get_save_parameters_to_file(working_dir: Path) -> Callable[[Parameters], None]:
+def get_save_parameters_to_file(
+    working_dir: Path,
+) -> Callable[[Parameters], None]:
     """Get a function to save parameters to a file.
 
     Parameters
@@ -154,7 +192,9 @@ def get_save_parameters_to_file(working_dir: Path) -> Callable[[Parameters], Non
         A function to save parameters to a file.
     """
 
-    def save_parameters_to_file(parameters: Parameters) -> None:
+    def save_parameters_to_file(
+        parameters: Parameters,
+    ) -> None:
         """Save the parameters to a file.
 
         Parameters
@@ -168,7 +208,10 @@ def get_save_parameters_to_file(working_dir: Path) -> Callable[[Parameters], Non
         """
         parameters_path = working_dir / "parameters"
         parameters_path.mkdir(parents=True, exist_ok=True)
-        with open(parameters_path / "parameters.bin", "wb") as f:
+        with open(
+            parameters_path / "parameters.bin",
+            "wb",
+        ) as f:
             # Since Parameters is a list of bytes
             # save the length of each row and the data
             # for deserialization
@@ -196,7 +239,9 @@ def get_weighted_avg_metrics_agg_fn(
         A function to compute a weighted average over pre-defined metrics.
     """
 
-    def weighted_avg(metrics: list[tuple[int, dict]]) -> dict:
+    def weighted_avg(
+        metrics: list[tuple[int, dict]],
+    ) -> dict:
         """Compute a weighted average over pre-defined metrics.
 
         Parameters
@@ -209,7 +254,9 @@ def get_weighted_avg_metrics_agg_fn(
         Dict
             The weighted average over pre-defined metrics.
         """
-        total_num_examples = sum([num_examples for num_examples, _ in metrics])
+        total_num_examples = sum(
+            [num_examples for num_examples, _ in metrics],
+        )
         weighted_metrics: dict = defaultdict(float)
         for num_examples, metric in metrics:
             for key, value in metric.items():
@@ -241,20 +288,33 @@ def test_client(
         if test_one_client:
             client = client_generator(0)
             _, *res_fit = client.fit(
-                parameters, on_fit_config_fn(0) if on_fit_config_fn else {}
+                parameters,
+                on_fit_config_fn(0) if on_fit_config_fn else {},
             )
             res_eval = client.evaluate(
-                parameters, on_evaluate_config_fn(0) if on_evaluate_config_fn else {}
+                parameters,
+                on_evaluate_config_fn(0) if on_evaluate_config_fn else {},
             )
-            log(logging.INFO, "Fit debug fit: %s  and eval: %s", res_fit, res_eval)
+            log(
+                logging.INFO,
+                "Fit debug fit: %s  and eval: %s",
+                res_fit,
+                res_eval,
+            )
         else:
             for i in range(total_clients):
                 client = client_generator(i)
                 _, *res_fit = client.fit(
-                    parameters, on_fit_config_fn(i) if on_fit_config_fn else {}
+                    parameters,
+                    on_fit_config_fn(i) if on_fit_config_fn else {},
                 )
                 res_eval = client.evaluate(
                     parameters,
                     on_evaluate_config_fn(i) if on_evaluate_config_fn else {},
                 )
-                log(logging.INFO, "Fit debug fit: %s  and eval: %s", res_fit, res_eval)
+                log(
+                    logging.INFO,
+                    "Fit debug fit: %s  and eval: %s",
+                    res_fit,
+                    res_eval,
+                )

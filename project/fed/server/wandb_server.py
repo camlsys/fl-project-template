@@ -1,4 +1,5 @@
 """Flower server accounting for Weights&Biases+file saving."""
+
 import timeit
 from collections.abc import Callable
 from logging import INFO
@@ -20,7 +21,10 @@ class WandbServer(Server):
         client_manager: ClientManager,
         strategy: Strategy | None = None,
         history: History | None = None,
-        save_parameters_to_file: Callable[[Parameters], None],
+        save_parameters_to_file: Callable[
+            [Parameters],
+            None,
+        ],
         save_files_per_round: Callable[[int], None],
     ) -> None:
         """Flower server implementation.
@@ -42,14 +46,21 @@ class WandbServer(Server):
         -------
         None
         """
-        super().__init__(client_manager=client_manager, strategy=strategy)
+        super().__init__(
+            client_manager=client_manager,
+            strategy=strategy,
+        )
 
         self.history: History | None = history
         self.save_parameters_to_file = save_parameters_to_file
         self.save_files_per_round = save_files_per_round
 
     # pylint: disable=too-many-locals
-    def fit(self, num_rounds: int, timeout: float | None) -> History:
+    def fit(
+        self,
+        num_rounds: int,
+        timeout: float | None,
+    ) -> History:
         """Run federated averaging for a number of rounds.
 
         Parameters
@@ -69,9 +80,14 @@ class WandbServer(Server):
 
         # Initialize parameters
         log(INFO, "Initializing global parameters")
-        self.parameters = self._get_initial_parameters(timeout=timeout)
+        self.parameters = self._get_initial_parameters(
+            timeout=timeout,
+        )
         log(INFO, "Evaluating initial parameters")
-        res = self.strategy.evaluate(0, parameters=self.parameters)
+        res = self.strategy.evaluate(
+            0,
+            parameters=self.parameters,
+        )
         if res is not None:
             log(
                 INFO,
@@ -79,8 +95,14 @@ class WandbServer(Server):
                 res[0],
                 res[1],
             )
-            history.add_loss_centralized(server_round=0, loss=res[0])
-            history.add_metrics_centralized(server_round=0, metrics=res[1])
+            history.add_loss_centralized(
+                server_round=0,
+                loss=res[0],
+            )
+            history.add_metrics_centralized(
+                server_round=0,
+                metrics=res[1],
+            )
 
         # Run federated learning for num_rounds
         log(INFO, "FL starting")
@@ -97,15 +119,23 @@ class WandbServer(Server):
                 timeout=timeout,
             )
             if res_fit is not None:
-                parameters_prime, fit_metrics, _ = res_fit  # fit_metrics_aggregated
+                (
+                    parameters_prime,
+                    fit_metrics,
+                    _,
+                ) = res_fit  # fit_metrics_aggregated
                 if parameters_prime:
                     self.parameters = parameters_prime
                 history.add_metrics_distributed_fit(
-                    server_round=current_round, metrics=fit_metrics
+                    server_round=current_round,
+                    metrics=fit_metrics,
                 )
 
             # Evaluate model using strategy implementation
-            res_cen = self.strategy.evaluate(current_round, parameters=self.parameters)
+            res_cen = self.strategy.evaluate(
+                current_round,
+                parameters=self.parameters,
+            )
             if res_cen is not None:
                 loss_cen, metrics_cen = res_cen
                 log(
@@ -116,21 +146,30 @@ class WandbServer(Server):
                     metrics_cen,
                     timeit.default_timer() - start_time,
                 )
-                history.add_loss_centralized(server_round=current_round, loss=loss_cen)
+                history.add_loss_centralized(
+                    server_round=current_round,
+                    loss=loss_cen,
+                )
                 history.add_metrics_centralized(
-                    server_round=current_round, metrics=metrics_cen
+                    server_round=current_round,
+                    metrics=metrics_cen,
                 )
 
             # Evaluate model on a sample of available clients
-            res_fed = self.evaluate_round(server_round=current_round, timeout=timeout)
+            res_fed = self.evaluate_round(
+                server_round=current_round,
+                timeout=timeout,
+            )
             if res_fed is not None:
                 loss_fed, evaluate_metrics_fed, _ = res_fed
                 if loss_fed is not None:
                     history.add_loss_distributed(
-                        server_round=current_round, loss=loss_fed
+                        server_round=current_round,
+                        loss=loss_fed,
                     )
                     history.add_metrics_distributed(
-                        server_round=current_round, metrics=evaluate_metrics_fed
+                        server_round=current_round,
+                        metrics=evaluate_metrics_fed,
                     )
             # Saver round parameters and files
             self.save_parameters_to_file(self.parameters)

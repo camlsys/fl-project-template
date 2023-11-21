@@ -1,16 +1,15 @@
 """Define our models, and training and eval functions."""
 
-import torch.nn as nn
+from torch import nn
 
 
 class Net(nn.Module):
     """A PyTorch model."""
 
     # TODO: define your model here
-    pass
 
 
-def get_net(config: dict) -> nn.Module:
+def get_net(_config: dict) -> nn.Module:
     """Return a model instance.
 
     Args:

@@ -32,11 +32,17 @@ class Net(nn.Module):
         super().__init__()
         self.conv1 = nn.Conv2d(1, 32, 5, padding=1)
         self.conv2 = nn.Conv2d(32, 64, 5, padding=1)
-        self.pool = nn.MaxPool2d(kernel_size=(2, 2), padding=1)
+        self.pool = nn.MaxPool2d(
+            kernel_size=(2, 2),
+            padding=1,
+        )
         self.fc1 = nn.Linear(64 * 7 * 7, 512)
         self.fc2 = nn.Linear(512, num_classes)
 
-    def forward(self, input_tensor: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        input_tensor: torch.Tensor,
+    ) -> torch.Tensor:
         """Forward pass of the CNN.
 
         Parameters
@@ -88,7 +94,10 @@ class LogisticRegression(nn.Module):
         super().__init__()
         self.linear = nn.Linear(28 * 28, num_classes)
 
-    def forward(self, input_tensor: torch.Tensor) -> torch.Tensor:
+    def forward(
+        self,
+        input_tensor: torch.Tensor,
+    ) -> torch.Tensor:
         """Forward pass.
 
         Parameters
@@ -101,9 +110,13 @@ class LogisticRegression(nn.Module):
         torch.Tensor
             The resulting Tensor after it has passed through the network
         """
-        output_tensor = self.linear(torch.flatten(input_tensor, 1))
+        output_tensor = self.linear(
+            torch.flatten(input_tensor, 1),
+        )
         return output_tensor
 
 
 # Simple wrapper to match the NetGenerator Interface
-get_logistic_regression: NetGen = lazy_config_wrapper(LogisticRegression)
+get_logistic_regression: NetGen = lazy_config_wrapper(
+    LogisticRegression,
+)

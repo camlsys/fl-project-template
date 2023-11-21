@@ -3,6 +3,7 @@
 This gives us the ability to dynamically choose functionality based on the hydra dict
 config without losing static type checking.
 """
+
 from collections.abc import Callable
 
 from omegaconf import DictConfig
@@ -52,7 +53,9 @@ def dispatch_train(cfg: DictConfig) -> TrainStructure:
         if result is not None:
             return result
 
-    raise ValueError(f"Unable to match the train/test and fed_test functions: {cfg}")
+    raise ValueError(
+        f"Unable to match the train/test and fed_test functions: {cfg}",
+    )
 
 
 def dispatch_data(cfg: DictConfig) -> DataStructure:
@@ -88,7 +91,7 @@ def dispatch_data(cfg: DictConfig) -> DataStructure:
             return result
 
     raise ValueError(
-        f"Unable to match the net generator and dataloader generator functions: {cfg}"
+        f"Unable to match the net generator and dataloader generator functions: {cfg}",
     )
 
 
@@ -124,4 +127,6 @@ def dispatch_config(cfg: DictConfig) -> ConfigStructure:
         if result is not None:
             return result
 
-    raise ValueError(f"Unable to match the config generation functions: {cfg}")
+    raise ValueError(
+        f"Unable to match the config generation functions: {cfg}",
+    )

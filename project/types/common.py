@@ -2,12 +2,13 @@
 
 Prefer these interfaces over ad-hoc inline definitions or concrete types.
 """
+
 from collections.abc import Callable
 from pathlib import Path
 
 import flwr as fl
-import torch.nn as nn
 from flwr.common import NDArrays
+from torch import nn
 from torch.utils.data import DataLoader
 
 # Interface for network generators
@@ -20,7 +21,10 @@ NetGen = Callable[[dict], nn.Module]
 # Client dataloaders require the client id,
 # weather the dataloader is for training or evaluation
 # and the config
-ClientDataloaderGen = Callable[[str | int, bool, dict], DataLoader]
+ClientDataloaderGen = Callable[
+    [str | int, bool, dict],
+    DataLoader,
+]
 
 # Server dataloaders only require a config and
 # weather the dataloader is for training or evaluation
@@ -31,8 +35,14 @@ FedDataloaderGen = Callable[[bool, dict], DataLoader]
 # all changes in behaviour should be done via a closure
 ClientGen = Callable[[int | str], fl.client.NumPyClient]
 
-TrainFunc = Callable[[nn.Module, DataLoader, dict, Path], tuple[int, dict]]
-TestFunc = Callable[[nn.Module, DataLoader, dict, Path], tuple[float, int, dict]]
+TrainFunc = Callable[
+    [nn.Module, DataLoader, dict, Path],
+    tuple[int, dict],
+]
+TestFunc = Callable[
+    [nn.Module, DataLoader, dict, Path],
+    tuple[float, int, dict],
+]
 
 # Type aliases for fit and eval results
 # discounting the Dict[str,Scalar] typing
@@ -51,7 +61,8 @@ FedEvalFN = Callable[
 ]
 
 FedEvalGen = Callable[
-    [NetGen, FedDataloaderGen, TestFunc, dict, Path], FedEvalFN | None
+    [NetGen, FedDataloaderGen, TestFunc, dict, Path],
+    FedEvalFN | None,
 ]
 
 # Functions to generate config dictionaries
@@ -64,5 +75,9 @@ OnEvaluateConfigFN = OnFitConfigFN
 # Allows us to take advantage of hydra without
 # losing static type checking
 TrainStructure = tuple[TrainFunc, TestFunc, FedEvalGen]
-DataStructure = tuple[NetGen, ClientDataloaderGen, FedDataloaderGen]
+DataStructure = tuple[
+    NetGen,
+    ClientDataloaderGen,
+    FedDataloaderGen,
+]
 ConfigStructure = tuple[OnFitConfigFN, OnEvaluateConfigFN]

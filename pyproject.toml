@@ -90,6 +90,7 @@ multi_line_output = 3
 include_trailing_comma = true
 force_grid_wrap = 0
 use_parentheses = true
+lines_after_imports = -1
 
 [tool.black]
 line-length = 88
@@ -167,9 +168,20 @@ exclude = [
 [tool.ruff]
 target-version = "py311"
 line-length = 88
-select = ["D", "E", "F", "W", "B", "ISC", "C4", "UP"]
-fixable = ["D", "E", "F", "W", "B", "ISC", "C4", "UP"]
-ignore = ["B024", "B027"]
+select = ["A", "D", "E", "F", "W", "B", "I", "ISC", "N", "ANN",
+"C4", "UP", "COM", "EXE", "FA", "ISC", "ICN", "INP", "PIE", "T20", 
+"Q", "RET", "SLOT", "SIM", "TID", "ARG", "PTH", "TD", "PD", "PGH", 
+"PL", "TRY","NPY", "PERF", "FURB", "RUF" ]
+fixable = ["A", "D", "E", "F", "W", "B", "I", "ISC", "N", "ANN", 
+"C4", "UP", "COM", "EXE", "FA", "ISC", "ICN", "INP", "PIE", "T20",
+"Q", "RET", "SLOT", "SIM", "TCH", "ARG", "PTH", "TD", "PD", "PGH",
+"PL", "TRY", "NPY", "PERF", "FURB", "RUF"]
+ignore = ["B024", "B027", "PLE1205", "PLE1206", "PLR0904",
+"PLR0911" , "PLR0912", "PLR0913", "PLR0915", "PLR0916", "PERF203",
+"PERF401","PERF403", "ANN101", "ANN102", "ANN401", "PLR6301",
+"ARG002", "TRY003", "PTH123", "TD002","TD003", "ARG001",
+"ARG002", "ARG003", "ARG004", "RET505", "N812", "RET504", 
+"PLW2901", "NPY002", "COM812", "ISC001", "RUF005"]
 exclude = [
     ".bzr",
     ".direnv",
@@ -193,6 +205,10 @@ exclude = [
     "venv",
     "proto",
 ]
+
+[tool.ruff.format]
+quote-style = "double"
+preview = true
 
 [tool.ruff.pydocstyle]
 convention = "numpy"

@@ -8,39 +8,48 @@ exclude: |
                 dev/|
                 data/|
                 run_scripts/|
-                .pre-commit-config.yaml/|
-
+                .pre-commit-config.yaml
   )$
-
-# fail_fast: true
+  
 repos:
-  - repo: local
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.6
+    hooks:
+        - id: ruff
+          types_or: [python, pyi, jupyter]
+          args: [ --fix, --preview ]
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
     hooks:
       - id: isort
-        name: isort
-        entry: poetry run isort
-        language: system
-        types: [file, python]
-      - id: black
-        name: black
-        entry: poetry run black -q
-        language: system
-        types: [file, python]
-      - id: yamlfix
-        name: yamlfix
-        entry: poetry run yamlfix
-        language: system
-        types: [file, yaml]
+        name: isort (python)
+  - repo: https://github.com/PyCQA/docformatter
+    rev: v1.7.5
+    hooks:
       - id: docformatter
-        name: docformatter
-        entry: poetry run docformatter -i -r
-        language: system
-        types: [file, python]
-      - id: ruff
-        name: ruff
-        entry: poetry run ruff --fix
-        language: system
-        types: [file, python]
+        additional_dependencies: [tomli]
+        args: [--in-place, --config, ./pyproject.toml]
+  - repo: https://github.com/lyz-code/yamlfix/
+    rev: 1.15.0
+    hooks:
+      - id: yamlfix
+  - repo: https://github.com/psf/black
+    rev: 23.11.0
+    hooks:
+    - id: black-jupyter
+      language_version: python3.11
+      args: [ --preview ]
+  # Ruff formater, should be faster than black
+  # prefer black due to wide adoption for now
+  # - repo: https://github.com/astral-sh/ruff-pre-commit
+  #   # Ruff version.
+  #   rev: v0.1.6
+  #   hooks:
+  #     - id: ruff-format
+  #       types_or: [ python, pyi, jupyter ]
+  #       args: [ --preview ]
+  - repo: local
+    hooks:
       - id: mypy
         name: mypy
         entry: poetry run mypy --incremental --show-traceback
@@ -65,5 +74,5 @@ ci:
   autoupdate_branch: ''
   autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
   autoupdate_schedule: weekly
-  skip: [isort, black, yamlfix, docformatter, ruff, mypy]
+  skip: [mypy]
   submodules: false

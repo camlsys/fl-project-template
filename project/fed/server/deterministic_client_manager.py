@@ -77,9 +77,15 @@ class DeterministicClientManager(SimpleClientManager):
 
         available_cids = []
         if num_clients <= len(cids):
-            available_cids = self.rng.sample(cids, num_clients)
+            available_cids = self.rng.sample(
+                cids,
+                num_clients,
+            )
         elif self.enable_resampling:
-            available_cids = self.rng.choices(cids, k=num_clients)
+            available_cids = self.rng.choices(
+                cids,
+                k=num_clients,
+            )
         else:
             log(
                 logging.INFO,
@@ -91,5 +97,9 @@ class DeterministicClientManager(SimpleClientManager):
             available_cids = []
 
         client_list = [self.clients[cid] for cid in available_cids]
-        log(logging.INFO, "Sampled the following clients: %s", available_cids)
+        log(
+            logging.INFO,
+            "Sampled the following clients: %s",
+            available_cids,
+        )
         return client_list

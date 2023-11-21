@@ -33,7 +33,9 @@ from project.task.default.train_test import (
 from project.types.common import ConfigStructure, DataStructure, TrainStructure
 
 
-def dispatch_train(cfg: DictConfig) -> TrainStructure | None:
+def dispatch_train(
+    cfg: DictConfig,
+) -> TrainStructure | None:
     """Dispatch the train/test and fed test functions based on the config file.
 
     Do not throw any errors based on not finding
@@ -55,7 +57,10 @@ def dispatch_train(cfg: DictConfig) -> TrainStructure | None:
         Return None if you cannot match the cfg.
     """
     # Select the value for the key with None default
-    train_structure: str | None = cfg.get("task", {}).get("train_structure", None)
+    train_structure: str | None = cfg.get("task", {}).get(
+        "train_structure",
+        None,
+    )
 
     # Only consider not None matches, case insensitive
     if train_structure is not None and train_structure.upper() == "DEFAULT":
@@ -88,17 +93,26 @@ def dispatch_data(cfg: DictConfig) -> DataStructure | None:
     """
     # Select the value for the key with {} default at nested dicts
     # and None default at the final key
-    client_model_and_data: str | None = cfg.get("task", {}).get("model_and_data", None)
+    client_model_and_data: str | None = cfg.get(
+        "task",
+        {},
+    ).get("model_and_data", None)
 
     # Only consider not None matches, case insensitive
     if client_model_and_data is not None and client_model_and_data.upper() == "DEFAULT":
-        return get_net, get_client_dataloader, get_fed_dataloader
+        return (
+            get_net,
+            get_client_dataloader,
+            get_fed_dataloader,
+        )
 
     # Cannot match, send to next dispatch in chain
     return None
 
 
-def dispatch_config(cfg: DictConfig) -> ConfigStructure | None:
+def dispatch_config(
+    cfg: DictConfig,
+) -> ConfigStructure | None:
     """Dispatches the config function based on the config_structure in the config file.
 
     By default it simply takes the fit_config and evaluate_config
@@ -126,13 +140,21 @@ def dispatch_config(cfg: DictConfig) -> ConfigStructure | None:
     """
     # Select the values for the key with {} default at nested dicts
     # and None default at the final key
-    fit_config: dict | None = cfg.get("task", {}).get("fit_config", None)
-    eval_config: dict | None = cfg.get("task", {}).get("eval_config", None)
+    fit_config: dict | None = cfg.get("task", {}).get(
+        "fit_config",
+        None,
+    )
+    eval_config: dict | None = cfg.get("task", {}).get(
+        "eval_config",
+        None,
+    )
 
     # Only consider existing config dicts as matches
     if fit_config is not None and eval_config is not None:
         return get_on_fit_config_fn(
-            cast(dict, OmegaConf.to_container(fit_config))
-        ), get_on_evaluate_config_fn(cast(dict, OmegaConf.to_container(eval_config)))
+            cast(dict, OmegaConf.to_container(fit_config)),
+        ), get_on_evaluate_config_fn(
+            cast(dict, OmegaConf.to_container(eval_config)),
+        )
 
     return None

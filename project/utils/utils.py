@@ -10,6 +10,7 @@ import shutil
 from collections.abc import Callable, Iterator
 from itertools import chain
 from pathlib import Path
+from types import TracebackType
 from typing import Any, cast
 
 import numpy as np
@@ -28,7 +29,9 @@ def obtain_device() -> torch.device:
     torch.device
         The device.
     """
-    return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    return torch.device(
+        "cuda:0" if torch.cuda.is_available() else "cpu",
+    )
 
 
 def lazy_wrapper(x: Callable) -> Callable[[], Any]:
@@ -49,7 +52,9 @@ def lazy_wrapper(x: Callable) -> Callable[[], Any]:
     return lambda: x
 
 
-def lazy_config_wrapper(x: Callable) -> Callable[[dict], Any]:
+def lazy_config_wrapper(
+    x: Callable,
+) -> Callable[[dict], Any]:
     """Wrap a value in a function that returns the value given a config.
 
     For easy instantion through hydra.
@@ -89,13 +94,22 @@ class NoOpContextManager:
 
     def __enter__(self) -> None:
         """Do nothing."""
-        return None
+        return
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc_value: BaseException | None,
+        _traceback: TracebackType | None,
+    ) -> None:
         """Do nothing."""
 
 
-def wandb_init(wandb_enabled: bool, *args, **kwargs):
+def wandb_init(
+    wandb_enabled: bool,
+    *args: Any,
+    **kwargs: Any,
+) -> NoOpContextManager | Any:
     """Initialize wandb if enabled.
 
     Parameters
@@ -121,11 +135,16 @@ def wandb_init(wandb_enabled: bool, *args, **kwargs):
 class RayContextManager:
     """A context manager for cleaning up after ray."""
 
-    def __enter__(self):
+    def __enter__(self) -> "RayContextManager":
         """Initialize the context manager."""
         return self
 
-    def __exit__(self, _exc_type, _exc_value, _traceback) -> None:
+    def __exit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc_value: BaseException | None,
+        _traceback: TracebackType | None,
+    ) -> None:
         """Cleanup the files.
 
         Parameters
@@ -143,10 +162,12 @@ class RayContextManager:
         """
         if ray.is_initialized():
             temp_dir = Path(
-                ray.worker._global_node.get_session_dir_path()  # type: ignore
+                ray.worker._global_node.get_session_dir_path(),
             )
             ray.shutdown()
-            directory_size = shutil.disk_usage(temp_dir).used
+            directory_size = shutil.disk_usage(
+                temp_dir,
+            ).used
             shutil.rmtree(temp_dir)
             log(
                 logging.INFO,
@@ -172,10 +193,9 @@ def cleanup(working_dir: Path, to_clean: list[str]) -> None:
     for file in working_dir.iterdir():
         if file.is_file():
             for clean_token in to_clean:
-                if clean_token in file.name:
-                    if file.exists():
-                        file.unlink()
-                        break
+                if clean_token in file.name and file.exists():
+                    file.unlink()
+                break
         else:
             children.append(file)
 
@@ -183,7 +203,10 @@ def cleanup(working_dir: Path, to_clean: list[str]) -> None:
         cleanup(child, to_clean)
 
 
-def get_checkpoint_index(output_dir: Path, file_limit: int | None) -> int:
+def get_checkpoint_index(
+    output_dir: Path,
+    file_limit: int | None,
+) -> int:
     """Get the index of the next checkpoint.
 
     Parameters
@@ -200,7 +223,11 @@ def get_checkpoint_index(output_dir: Path, file_limit: int | None) -> int:
         The index of the next checkpoint.
     """
     same_name_files = cast(
-        Iterator[Path], chain(output_dir.glob("*_*"), output_dir.glob("*/*_*"))
+        Iterator[Path],
+        chain(
+            output_dir.glob("*_*"),
+            output_dir.glob("*/*_*"),
+        ),
     )
 
     same_name_files = (
@@ -246,21 +273,25 @@ def save_files(
     for file in working_dir.iterdir():
         if file.is_file():
             for save_token in to_save:
-                if save_token in file.name:
-                    if file.exists():
-                        true_ending = (
-                            f"{checkpoint_index}" + ("_" + str(ending))
-                            if ending is not None
-                            else f"{checkpoint_index}"
-                        )
-                        destination_file = (
-                            output_dir
-                            / file.with_stem(f"{file.stem}_{true_ending}").name
-                        )
+                if save_token in file.name and file.exists():
+                    true_ending = (
+                        f"{checkpoint_index}" + ("_" + str(ending))
+                        if ending is not None
+                        else f"{checkpoint_index}"
+                    )
+                    destination_file = (
+                        output_dir
+                        / file.with_stem(
+                            f"{file.stem}_{true_ending}",
+                        ).name
+                    )
 
-                        destination_file.parent.mkdir(parents=True, exist_ok=True)
-                        shutil.copy(file, destination_file)
-                        break
+                    destination_file.parent.mkdir(
+                        parents=True,
+                        exist_ok=True,
+                    )
+                    shutil.copy(file, destination_file)
+                    break
         else:
             children.append(file)
 
@@ -281,7 +312,7 @@ class FileSystemManager:
     def __init__(
         self,
         working_dir: Path,
-        output_dir,
+        output_dir: Path,
         to_clean_once: list[str],
         to_save_once: list[str],
         original_hydra_dir: Path,
@@ -319,7 +350,10 @@ class FileSystemManager:
         self.to_save_once = to_save_once
         self.original_hydra_dir = original_hydra_dir
         self.reuse_output_dir = reuse_output_dir
-        self.checkpoint_index = get_checkpoint_index(self.output_dir, file_limit)
+        self.checkpoint_index = get_checkpoint_index(
+            self.output_dir,
+            file_limit,
+        )
 
     def get_save_files_every_round(
         self,
@@ -353,14 +387,22 @@ class FileSystemManager:
 
         return save_files_round
 
-    def __enter__(self):
+    def __enter__(self) -> "FileSystemManager":
         """Initialize the context manager and cleanup."""
-        log(logging.INFO, f"Pre-cleaning {self.to_clean_once}")
+        log(
+            logging.INFO,
+            f"Pre-cleaning {self.to_clean_once}",
+        )
         cleanup(self.working_dir, self.to_clean_once)
 
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback) -> None:
+    def __exit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc_value: BaseException | None,
+        _traceback: TracebackType | None,
+    ) -> None:
         """Cleanup the files."""
         log(logging.INFO, f"Saving {self.to_save_once}")
 
@@ -377,12 +419,21 @@ class FileSystemManager:
 
         # Move main.log to the working directory
         main_log = self.original_hydra_dir / "main.log"
-        shutil.copy2(str(main_log), str(self.working_dir / "main.log"))
+        shutil.copy2(
+            str(main_log),
+            str(self.working_dir / "main.log"),
+        )
         save_files(
             self.working_dir,
             self.output_dir,
             to_save=self.to_save_once,
             checkpoint_index=self.checkpoint_index,
         )
-        log(logging.INFO, f"Post-cleaning {self.to_clean_once}")
-        cleanup(self.working_dir, to_clean=self.to_clean_once)
+        log(
+            logging.INFO,
+            f"Post-cleaning {self.to_clean_once}",
+        )
+        cleanup(
+            self.working_dir,
+            to_clean=self.to_clean_once,
+        )
