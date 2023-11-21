@@ -16,8 +16,15 @@ repos:
     rev: v0.1.6
     hooks:
         - id: ruff
+          name: ruff_fix
           types_or: [python, pyi, jupyter]
           args: [ --fix, --preview ]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.6
+    hooks:
+        - id: ruff
+          types_or: [python, pyi, jupyter]
+          args: [ --check, --preview ]
   - repo: https://github.com/pycqa/isort
     rev: 5.12.0
     hooks:
@@ -65,5 +72,5 @@ ci:
   autoupdate_branch: ''
   autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
   autoupdate_schedule: weekly
-  skip: [mypy]
+  skip: [ruff_fix, mypy]
   submodules: false
