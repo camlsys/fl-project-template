@@ -56,9 +56,7 @@ Install the template using the setup.sh script:
 
 
 
-
-If ``poetry``, ``pyenv``, and/or the correct python version are installed, they will not be installed again. If not installed, you must provide paths to the desired install locations. If running on a cluster, this would be the location of the shared file system.
-
+If ``poetry``, ``pyenv``, and/or the correct python version are installed, they will not be installed again. If not installed, you must provide paths to the desired install locations. If running on a cluster, this would be the location of the shared file system. You can now run ```poetry shell``` to activate the python env in your shell
 > :warning: Run the `default` task to check that everything is installed correctly from the root ``fl-project-template``, not from the ``fl-project-template/project`` directory.
 
 ```bash
