@@ -96,7 +96,7 @@ Adding a task requires you to add a new task in the ```project.task``` module an
 - ``task``: The ML task implementation includes the model, data loading, and training/testing. Almost all user changes should be made here. Tasks will typically include modules for the following:
     - ``dataset_preparation``: Hydra entry point which handles downloading the dataset and partitionin it. The partition can be generated on the fly during FL execution or saved into a partition directory with one folder per client containing train and test files---with the server test set being in the root directory of the partition dir. This needs to be executed prior to running the main experiment. It relies on the dataset part of the Hydra config.
     - ``dataset``: offers functionality to create the dataloaders for either the client fit/eval or for the centralized server evaluation.
-    - ``dispatch`: Handles mapping the Hydra config to the required task configuration.
+    - ``dispatch``: Handles mapping the Hydra config to the required task configuration.
     - ``models``: Offers functionality to lazily create a model based on a received configuration.
     - ``train_test``: Offers functionality to train a model on a given dataset. This includes the effective train/test functions together with the config generation functions for the fit/eval stages of FL. The federated evaluation test function, if provided, should also be specified here.
 
