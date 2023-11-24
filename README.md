@@ -92,6 +92,26 @@ Once a complete experiment has run, you can continue it for a specified number o
     ```
 These are all the basic steps required to run a simple experiment. 
 
+## Adding a task
+
+Adding a task requires you to add a new task in the ```project.task``` module and to make changes to the ```project.dispatch``` module. Each ```project.task``` module has a specific structure:
+- ``task``: The ML task implementation includes the model, data loading, and training/testing. Almost all user changes should be made here. Tasks will typically include modules for the following:
+    - ``dataset_preparation``: Hydra entry point which handles downloading the dataset and partitionin it. The partition can be generated on the fly during FL execution or saved into a partition directory with one folder per client containing train and test files---with the server test set being in the root directory of the partition dir. This needs to be executed prior to running the main experiment. It relies on the dataset part of the Hydra config.
+    - ``dataset``: offers functionality to create the dataloaders for either the client fit/eval or for the centralized server evaluation.
+    - ``dispatch`: Handles mapping the Hydra config to the required task configuration.
+    - ``models``: Offers functionality to lazily create a model based on a received configuration.
+    - ``train_test``: Offers functionality to train a model on a given dataset. This includes the effective train/test functions together with the config generation functions for the fit/eval stages of FL. The federated evaluation test function, if provided, should also be specified here.
+
+Specifying a new task requires implementing the above functionality, together with functions/closures which generate/configure and generate them in a manner which obeys the interface of previous tasks, specified in ```project.types```. 
+
+After implementing the task, dynamically starting it via ```hydra``` requires changing two modules:
+- The ```project.<new_task>.dispatch``` module requires three functions:
+    - ```dispatch_data(cfg)``` is meant to provide a function to generate the model and the dataloaders. By default this is done via the ```conf.task.model_and_data``` string in the config.
+    - ```dispatch_train(cfg)``` selects the ```train```, ```test``` and federated test functions. By default this is dispatched on the ```conf.task.train_structure``` string in the config.
+    - ```dispatch_config``` selects the configs used during fit and eval, you will likely not have to change this as the default task provides a sensible version.
+- The ```project.dispatch``` module requires you to add the task-specific ```dispatch_data```, ```dispatch_train``` and ```dispatch_config``` functions from the ```project.<new_task>.dispatch``` module to the list of possible tasks that can match the config. The statically-declared function order determines which task is selected if multiple ones match the config.
+
+Yu have now implemneted an entire new FL task without having to touch any of the FL-specific code. 
 ## Template Structure
 
 The template uses poetry with the ``project`` name for the top-level package. All imports are made from this package, and no relative imports are allowed. The structure is as follows:
@@ -113,12 +133,7 @@ The the main packages of concern are:
 - ``dispatch``: handles mapping a Hydra configuration to the ML task. 
 - ``fed``: Contains the federated learning functionality such as client sampling and model parameter saving. Should require little to no modification.
 - ``main``: a hydra entry point.
-- ``task``: The ML task implementation includes the model, data loading, and training/testing. Almost all user changes should be made here. Tasks will typically include modules for the following:
-    - ``dataset_preparation``: Hydra entry point which handles downloading the dataset and partitionin it. The partition can be generated on the fly during FL execution or saved into a partition directory with one folder per client containing train and test files---with the server test set being in the root directory of the partition dir. This needs to be executed prior to running the main experiment. It relies on the dataset part of the Hydra config.
-    - ``dataset``: offers functionality to create the dataloaders for either the client fit/eval or for the centralized server evaluation.
-    - ``dispatch`: Handles mapping the Hydra config to the required task configuration.
-    - ``models``: Offers functionality to lazily create a model based on a received configuration.
-    - ``train_test``: Offers functionality to train a model on a given dataset. This includes the effective train/test functions together with the config generation functions for the fit/eval stages of FL. The federated evaluation test function, if provided, should also be specified here.
+- ``task``: described above
 
 Two tasks are already implemented:
 - ``default``: A task providing generic functionality that may be reused across tasks. It requires no data and provides a minimum example of what a task must provide for the FL training to execute. 

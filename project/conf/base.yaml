@@ -33,7 +33,7 @@ to_clean_once: [history, parameters, yaml, log]
 use_wandb: false
 
 # Test without Ray to enable easy error detection
-test_clients:
+debug_clients:
   all: false
   one: true
 

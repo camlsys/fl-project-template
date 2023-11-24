@@ -283,8 +283,8 @@ def main(cfg: DictConfig) -> None:
             # Runs fit and eval on either one client or all of them
             # Avoids launching ray for debugging purposes
             test_client(
-                test_all_clients=cfg.test_clients.all,
-                test_one_client=cfg.test_clients.one,
+                test_all_clients=cfg.debug_clients.all,
+                test_one_client=cfg.debug_clients.one,
                 client_generator=client_generator,
                 initial_parameters=initial_parameters,
                 total_clients=cfg.fed.num_total_clients,
