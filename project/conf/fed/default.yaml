@@ -10,7 +10,7 @@ num_evaluate_clients_per_round: 2
 enable_resampling: false
 
 # Client resources
-cpus_per_client: 10
+cpus_per_client: 1
 gpus_per_client: 0
 
 # Seed for client selection
