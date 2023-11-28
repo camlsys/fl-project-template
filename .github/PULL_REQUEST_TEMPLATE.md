@@ -1,7 +1,7 @@
 <!--
 Thank you for opening a pull request (PR)!
 
-Contribution guidelines: https://github.com/adap/flower/blob/main/CONTRIBUTING.md
+Contribution guidelines: https://github.com/camlsys/fl-project-template/main/CONTRIBUTING.md
 -->
 
 ## Issue
@@ -36,10 +36,8 @@ Example: The variable `rnd` was renamed to `server_round` to improve readability
 
 - [ ] Implement proposed change
 - [ ] Write tests
-- [ ] Update [documentation](https://flower.dev/docs/writing-documentation.html)
-- [ ] Update [changelog](https://github.com/adap/flower/blob/main/doc/source/changelog.rst)
 - [ ] Make CI checks pass
-- [ ] Ping maintainers on [Slack](https://flower.dev/join-slack/) (channel `#contributions`)
+- [ ] Ping maintainers (@Iacob-Alexandru-Andrei, @relogu)
 
 ### Any other comments?
 
@@ -47,9 +45,7 @@ Example: The variable `rnd` was renamed to `server_round` to improve readability
 Please be aware that it may take some time until the maintainers can review the PR.
 Smaller PRs with good descriptions can be considered much more easily.
 
-If you have an urgent request or question, please use the Flower Slack:
-
-    https://flower.dev/join-slack/ (channel: #contributions)
-
-Thank you for contributing to Flower!
+If you have an urgent request or question, please reach out to the maintainers directly:
+  - [Alex Iacob](@Iacob-Alexandru-Andrei)
+  - [Lorenzo Sani](@relogu)
 -->
