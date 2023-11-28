@@ -304,19 +304,23 @@ def main(cfg: DictConfig) -> None:
                 client_fn=client_generator,
                 num_clients=cfg.fed.num_total_clients,
                 client_resources={
-                    "num_cpus": int(
-                        cfg.fed.cpus_per_client,
-                    )
-                    if cfg.fed.cpus_per_client > 1
-                    else float(
-                        cfg.fed.cpus_per_client,
+                    "num_cpus": (
+                        int(
+                            cfg.fed.cpus_per_client,
+                        )
+                        if cfg.fed.cpus_per_client > 1
+                        else float(
+                            cfg.fed.cpus_per_client,
+                        )
                     ),
-                    "num_gpus": int(
-                        cfg.fed.gpus_per_client,
-                    )
-                    if cfg.fed.gpus_per_client > 1
-                    else float(
-                        cfg.fed.gpus_per_client,
+                    "num_gpus": (
+                        int(
+                            cfg.fed.gpus_per_client,
+                        )
+                        if cfg.fed.gpus_per_client > 1
+                        else float(
+                            cfg.fed.gpus_per_client,
+                        )
                     ),
                 },
                 server=server,
