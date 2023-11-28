@@ -277,7 +277,7 @@ def main(cfg: DictConfig) -> None:
                 test=test_func,
             )
 
-            # Seed everything to maybe improve reproduceability
+            # Seed everything to maybe improve reproducibility
             seed_everything(adjusted_seed)
 
             # Runs fit and eval on either one client or all of them
@@ -297,14 +297,25 @@ def main(cfg: DictConfig) -> None:
             # If multiple ray servers run in parallel
             # you should provide them from wherever
             # you start your server (e.g., sh script)
+            # NOTE: `client_resources` accepts fractional
+            # values for `num_cpus` and `num_gpus` iff
+            # they're lower than 1.0.
             fl.simulation.start_simulation(
                 client_fn=client_generator,
                 num_clients=cfg.fed.num_total_clients,
                 client_resources={
                     "num_cpus": int(
                         cfg.fed.cpus_per_client,
+                    )
+                    if cfg.fed.cpus_per_client > 1
+                    else float(
+                        cfg.fed.cpus_per_client,
                     ),
                     "num_gpus": int(
+                        cfg.fed.gpus_per_client,
+                    )
+                    if cfg.fed.gpus_per_client > 1
+                    else float(
                         cfg.fed.gpus_per_client,
                     ),
                 },
