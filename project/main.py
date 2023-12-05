@@ -308,7 +308,7 @@ def main(cfg: DictConfig) -> None:
                         int(
                             cfg.fed.cpus_per_client,
                         )
-                        if cfg.fed.cpus_per_client > 1
+                        if cfg.fed.cpus_per_client >= 1
                         else float(
                             cfg.fed.cpus_per_client,
                         )
@@ -317,7 +317,7 @@ def main(cfg: DictConfig) -> None:
                         int(
                             cfg.fed.gpus_per_client,
                         )
-                        if cfg.fed.gpus_per_client > 1
+                        if cfg.fed.gpus_per_client >= 1
                         else float(
                             cfg.fed.gpus_per_client,
                         )
