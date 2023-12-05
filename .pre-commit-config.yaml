@@ -25,7 +25,7 @@ repos:
         additional_dependencies: [tomli]
         args: [--in-place, --config, ./pyproject.toml]
   - repo: https://github.com/lyz-code/yamlfix/
-    rev: 1.15.0
+    rev: 1.16.0
     hooks:
       - id: yamlfix
   - repo: https://github.com/psf/black
