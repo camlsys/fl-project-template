@@ -39,7 +39,7 @@ class TrainConfig(BaseModel):
         arbitrary_types_allowed = True
 
 
-def train(  # pylint: disable=too-many-arguments
+def train(  # ruff: disable=too-many-arguments
     net: nn.Module,
     trainloader: DataLoader,
     _config: dict,
