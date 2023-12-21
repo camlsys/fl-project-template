@@ -270,7 +270,7 @@ def get_weighted_avg_metrics_agg_fn(
     return weighted_avg
 
 
-def test_client( # pylint: disable=too-many-arguments
+def test_client(  # pylint: disable=too-many-arguments
     test_all_clients: bool,
     test_one_client: bool,
     client_generator: ClientGen,

@@ -257,7 +257,7 @@ def _sort_by_class(
 
 
 # pylint: disable=too-many-locals, too-many-arguments
-def _power_law_split( # pylint: disable=too-many-arguments
+def _power_law_split(  # pylint: disable=too-many-arguments
     sorted_trainset: MNIST,
     num_partitions: int,
     num_labels_per_partition: int = 2,

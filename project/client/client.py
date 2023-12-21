@@ -49,7 +49,7 @@ class ClientConfig(BaseModel):
 class Client(fl.client.NumPyClient):
     """Virtual client for ray."""
 
-    def __init__( # pylint: disable=too-many-arguments
+    def __init__(  # pylint: disable=too-many-arguments
         self,
         cid: int | str,
         working_dir: Path,
