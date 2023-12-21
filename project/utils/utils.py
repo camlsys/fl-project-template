@@ -245,7 +245,7 @@ def get_checkpoint_index(
     return max(indicies, default=-1) + 1
 
 
-def save_files(  # ruff: disable=too-many-arguments
+def save_files(# noqa: PLR0917
     working_dir: Path,
     output_dir: Path,
     to_save: list[str],
