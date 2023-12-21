@@ -309,7 +309,7 @@ def save_files(  # ruff: disable=too-many-arguments
 class FileSystemManager:
     """A context manager for saving and cleaning up files."""
 
-    def __init__(  # ruff: disable=too-many-arguments
+    def __init__(  # noqa: PLR0917
         self,
         working_dir: Path,
         output_dir: Path,
