@@ -245,7 +245,7 @@ def get_checkpoint_index(
     return max(indicies, default=-1) + 1
 
 
-def save_files(
+def save_files( # pylint: disable=too-many-arguments
     working_dir: Path,
     output_dir: Path,
     to_save: list[str],
@@ -309,7 +309,7 @@ def save_files(
 class FileSystemManager:
     """A context manager for saving and cleaning up files."""
 
-    def __init__(
+    def __init__( # pylint: disable=too-many-arguments
         self,
         working_dir: Path,
         output_dir: Path,
