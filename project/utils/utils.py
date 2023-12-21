@@ -245,7 +245,7 @@ def get_checkpoint_index(
     return max(indicies, default=-1) + 1
 
 
-def save_files(  # pylint: disable=too-many-arguments
+def save_files(  # noqa: PLR0917
     working_dir: Path,
     output_dir: Path,
     to_save: list[str],
@@ -309,7 +309,7 @@ def save_files(  # pylint: disable=too-many-arguments
 class FileSystemManager:
     """A context manager for saving and cleaning up files."""
 
-    def __init__(  # pylint: disable=too-many-arguments
+    def __init__(  # noqa: PLR0917
         self,
         working_dir: Path,
         output_dir: Path,
