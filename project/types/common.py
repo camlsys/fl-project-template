@@ -33,7 +33,7 @@ FedDataloaderGen = Callable[[bool, dict], DataLoader]
 # Client generators require the client id only
 # necessary for ray instantiation
 # all changes in behaviour should be done via a closure
-ClientGen = Callable[[int | str], fl.client.NumPyClient]
+ClientGen = Callable[[str], fl.client.NumPyClient]
 
 TrainFunc = Callable[
     [nn.Module, DataLoader, dict, Path],

@@ -286,7 +286,7 @@ def test_client(  # noqa: PLR0917
     parameters = parameters_to_ndarrays(initial_parameters)
     if test_all_clients or test_one_client:
         if test_one_client:
-            client = client_generator(0)
+            client = client_generator(str(0))
             _, *res_fit = client.fit(
                 parameters,
                 on_fit_config_fn(0) if on_fit_config_fn else {},
@@ -303,7 +303,7 @@ def test_client(  # noqa: PLR0917
             )
         else:
             for i in range(total_clients):
-                client = client_generator(i)
+                client = client_generator(str(i))
                 _, *res_fit = client.fit(
                     parameters,
                     on_fit_config_fn(i) if on_fit_config_fn else {},
