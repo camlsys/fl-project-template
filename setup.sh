@@ -50,7 +50,7 @@ fi
 
 current_version=$(pyenv local)
 
-if [ "$current_version" == "$VPYTHON_VERSION" ]; then
+if [ "$current_version" = "$VPYTHON_VERSION" ]; then
   echo "The local Python version is already set to $VPYTHON_VERSION"
 else
   pyenv local $VPYTHON_VERSION

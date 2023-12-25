@@ -301,7 +301,9 @@ def main(cfg: DictConfig) -> None:
             # values for `num_cpus` and `num_gpus` iff
             # they're lower than 1.0.
             fl.simulation.start_simulation(
-                client_fn=client_generator,
+                # NOTE: mypy complains about the type of client_generator
+                # We must wait for reconciliation from Flower
+                client_fn=client_generator,  # type: ignore[arg-type]
                 num_clients=cfg.fed.num_total_clients,
                 client_resources={
                     "num_cpus": (
