@@ -8,7 +8,8 @@ The following categories of functionality are grouped together:
     - net generator and dataloader generator functions
     - fit/eval config functions
 
-The top-level project.dipatch module operates as a pipeline
+The top-level project.dispatch
+module operates as a pipeline
 and selects the first function which does not return None.
 
 Do not throw any errors based on not finding a given attribute
@@ -106,13 +107,13 @@ def dispatch_data(cfg: DictConfig) -> DataStructure | None:
     )
 
     # Only consider situations where both are not None
-    # otherwise data loading would failr later
+    # otherwise data loading would fail later
     if client_model_and_data is not None and partition_dir is not None:
         # Obtain the dataloader generators
         # for the provided partition dir
         (
             client_dataloader_gen,
-            fed_dataloater_gen,
+            fed_dataloader_gen,
         ) = get_dataloader_generators(
             Path(partition_dir),
         )
@@ -122,13 +123,13 @@ def dispatch_data(cfg: DictConfig) -> DataStructure | None:
             return (
                 get_net,
                 client_dataloader_gen,
-                fed_dataloater_gen,
+                fed_dataloader_gen,
             )
         elif client_model_and_data.upper() == "MNIST_LR":
             return (
                 get_logistic_regression,
                 client_dataloader_gen,
-                fed_dataloater_gen,
+                fed_dataloader_gen,
             )
 
     # Cannot match, send to next dispatch in chain

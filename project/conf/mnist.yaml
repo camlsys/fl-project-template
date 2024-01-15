@@ -19,15 +19,15 @@ working_dir: null
 # at the end of training
 to_save_once: [history, yaml, log]
 
-# List of file patterns to be saved from working_dir repeteadly
-to_save_per_round: [parameters]
+# List of file patterns to be saved from working_dir repeatedly
+to_save_per_round: [parameters, rng]
 
 # The frequency with which they should be saved
 save_frequency: 1
 
 # List of flie patterns to be deleted
 # prior to and at the end of training from working_dir
-to_clean_once: [history, parameters, yaml, log]
+to_clean_once: [history, parameters, yaml, log, rng]
 
 # Control wandb logging
 use_wandb: false

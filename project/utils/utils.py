@@ -4,7 +4,6 @@ Generic utilities.
 """
 
 import logging
-import random
 import re
 import shutil
 from collections.abc import Callable, Iterator
@@ -13,12 +12,13 @@ from pathlib import Path
 from types import TracebackType
 from typing import Any, cast
 
-import numpy as np
 import ray
 import torch
 from flwr.common.logger import log
-
+from project.fed.utils.utils import Files
 import wandb
+
+from project.types.common import Folders, IsolatedRNG
 
 
 def obtain_device() -> torch.device:
@@ -52,12 +52,10 @@ def lazy_wrapper(x: Callable) -> Callable[[], Any]:
     return lambda: x
 
 
-def lazy_config_wrapper(
-    x: Callable,
-) -> Callable[[dict], Any]:
-    """Wrap a value in a function that returns the value given a config.
+def lazy_config_wrapper(x: Callable) -> Callable[[dict, IsolatedRNG], Any]:
+    """Wrap a value in a function that returns the value given a config and rng_tuple.
 
-    For easy instantion through hydra.
+    For easy instantiation through hydra.
 
     Parameters
     ----------
@@ -69,24 +67,7 @@ def lazy_config_wrapper(
     Callable[[Dict], Any]
         The wrapped value.
     """
-    return lambda _config: x()
-
-
-def seed_everything(seed: int) -> None:
-    """Seed everything for reproducibility.
-
-    Parameters
-    ----------
-    seed : int
-        The seed.
-
-    Returns
-    -------
-        None
-    """
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
+    return lambda _config, _rng_tuple: x()
 
 
 class NoOpContextManager:
@@ -195,7 +176,7 @@ def cleanup(working_dir: Path, to_clean: list[str]) -> None:
             for clean_token in to_clean:
                 if clean_token in file.name and file.exists():
                     file.unlink()
-                break
+                    break
         else:
             children.append(file)
 
@@ -203,11 +184,11 @@ def cleanup(working_dir: Path, to_clean: list[str]) -> None:
         cleanup(child, to_clean)
 
 
-def get_checkpoint_index(
-    output_dir: Path,
+def get_highest_round(
+    parameters_dir: Path,
     file_limit: int | None,
 ) -> int:
-    """Get the index of the next checkpoint.
+    """Get the index of the highest round.
 
     Parameters
     ----------
@@ -220,13 +201,13 @@ def get_checkpoint_index(
     Returns
     -------
     int
-        The index of the next checkpoint.
+        The index of the highest round.
     """
     same_name_files = cast(
         Iterator[Path],
         chain(
-            output_dir.glob("*_*"),
-            output_dir.glob("*/*_*"),
+            parameters_dir.glob(f"*{Files.PARAMETERS}_*"),
+            parameters_dir.glob(f"*/*{Files.PARAMETERS}_*"),
         ),
     )
 
@@ -241,16 +222,14 @@ def get_checkpoint_index(
         for f in same_name_files
         if (v := re.search(r"_([0-9]+)", f.stem))
     )
+    return max(indicies, default=0)
 
-    return max(indicies, default=-1) + 1
 
-
-def save_files(  # noqa: PLR0917
+def save_files(
     working_dir: Path,
     output_dir: Path,
     to_save: list[str],
-    checkpoint_index: int,
-    ending: int | None = None,
+    server_round: int,
     top_level: bool = True,
 ) -> None:
     """Save the files in the working dir.
@@ -274,15 +253,10 @@ def save_files(  # noqa: PLR0917
         if file.is_file():
             for save_token in to_save:
                 if save_token in file.name and file.exists():
-                    true_ending = (
-                        f"{checkpoint_index}" + ("_" + str(ending))
-                        if ending is not None
-                        else f"{checkpoint_index}"
-                    )
                     destination_file = (
                         output_dir
                         / file.with_stem(
-                            f"{file.stem}_{true_ending}",
+                            f"{file.stem}_{server_round}",
                         ).name
                     )
 
@@ -300,23 +274,24 @@ def save_files(  # noqa: PLR0917
             child,
             output_dir,
             to_save=to_save,
-            ending=ending,
             top_level=False,
-            checkpoint_index=checkpoint_index,
+            server_round=server_round,
         )
 
 
 class FileSystemManager:
     """A context manager for saving and cleaning up files."""
 
-    def __init__(  # noqa: PLR0917
+    def __init__(
         self,
         working_dir: Path,
         output_dir: Path,
+        load_parameters_from: Path | None,
         to_clean_once: list[str],
         to_save_once: list[str],
         original_hydra_dir: Path,
         reuse_output_dir: bool,
+        starting_round: int | None,
         file_limit: int | None = None,
     ) -> None:
         """Initialize the context manager.
@@ -350,9 +325,22 @@ class FileSystemManager:
         self.to_save_once = to_save_once
         self.original_hydra_dir = original_hydra_dir
         self.reuse_output_dir = reuse_output_dir
-        self.checkpoint_index = get_checkpoint_index(
-            self.output_dir,
-            file_limit,
+
+        highest_round = get_highest_round(
+            parameters_dir=(
+                load_parameters_from
+                if load_parameters_from is not None
+                else output_dir / Folders.STATE / Folders.PARAMETERS
+            ),
+            file_limit=file_limit,
+        )
+        self.server_round = (
+            min(
+                highest_round,
+                starting_round,
+            )
+            if starting_round is not None
+            else highest_round
         )
 
     def get_save_files_every_round(
@@ -376,13 +364,13 @@ class FileSystemManager:
         """
 
         def save_files_round(cur_round: int) -> None:
+            self.server_round = cur_round
             if cur_round % save_frequency == 0:
                 save_files(
                     self.working_dir,
                     self.output_dir,
                     to_save=to_save,
-                    ending=cur_round,
-                    checkpoint_index=self.checkpoint_index,
+                    server_round=cur_round,
                 )
 
         return save_files_round
@@ -394,7 +382,6 @@ class FileSystemManager:
             f"Pre-cleaning {self.to_clean_once}",
         )
         cleanup(self.working_dir, self.to_clean_once)
-
         return self
 
     def __exit__(
@@ -427,7 +414,7 @@ class FileSystemManager:
             self.working_dir,
             self.output_dir,
             to_save=self.to_save_once,
-            checkpoint_index=self.checkpoint_index,
+            server_round=self.server_round,
         )
         log(
             logging.INFO,

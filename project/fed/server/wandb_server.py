@@ -11,6 +11,8 @@ from flwr.server.client_manager import ClientManager
 from flwr.server.history import History
 from flwr.server.strategy import Strategy
 
+from project.types.common import ServerRNG
+
 
 class WandbServer(Server):
     """Flower server."""
@@ -19,12 +21,15 @@ class WandbServer(Server):
         self,
         *,
         client_manager: ClientManager,
+        starting_round: int = 0,
+        server_rng: ServerRNG,
         strategy: Strategy | None = None,
         history: History | None = None,
         save_parameters_to_file: Callable[
             [Parameters],
             None,
         ],
+        save_rng_to_file: Callable[[ServerRNG], None],
         save_files_per_round: Callable[[int], None],
     ) -> None:
         """Flower server implementation.
@@ -54,6 +59,9 @@ class WandbServer(Server):
         self.history: History | None = history
         self.save_parameters_to_file = save_parameters_to_file
         self.save_files_per_round = save_files_per_round
+        self.starting_round = starting_round
+        self.server_rng = server_rng
+        self.save_rng_to_file = save_rng_to_file
 
     # pylint: disable=too-many-locals
     def fit(
@@ -78,41 +86,42 @@ class WandbServer(Server):
         """
         history = self.history if self.history is not None else History()
 
-        # Initialize parameters
-        log(INFO, "Initializing global parameters")
-        self.parameters = self._get_initial_parameters(
-            timeout=timeout,
-        )
-        log(INFO, "Evaluating initial parameters")
-        res = self.strategy.evaluate(
-            0,
-            parameters=self.parameters,
-        )
-        if res is not None:
-            log(
-                INFO,
-                "initial parameters (loss, other metrics): %s, %s",
-                res[0],
-                res[1],
+        if self.starting_round == 0:
+            # Initialize parameters
+            log(INFO, "Initializing global parameters")
+            self.parameters = self._get_initial_parameters(
+                timeout=timeout,
             )
-            history.add_loss_centralized(
-                server_round=0,
-                loss=res[0],
+            log(INFO, "Evaluating initial parameters")
+            res = self.strategy.evaluate(
+                0,
+                parameters=self.parameters,
             )
-            history.add_metrics_centralized(
-                server_round=0,
-                metrics=res[1],
-            )
+            if res is not None:
+                log(
+                    INFO,
+                    "initial parameters (loss, other metrics): %s, %s",
+                    res[0],
+                    res[1],
+                )
+                history.add_loss_centralized(
+                    server_round=0,
+                    loss=res[0],
+                )
+                history.add_metrics_centralized(
+                    server_round=0,
+                    metrics=res[1],
+                )
+            # Save initial parameters and files
+            self.save_parameters_to_file(self.parameters)
+            self.save_rng_to_file(self.server_rng)
+            self.save_files_per_round(0)
 
         # Run federated learning for num_rounds
         log(INFO, "FL starting")
         start_time = timeit.default_timer()
 
-        # Save initial parameters and files
-        self.save_parameters_to_file(self.parameters)
-        self.save_files_per_round(0)
-
-        for current_round in range(1, num_rounds + 1):
+        for current_round in range(self.starting_round + 1, num_rounds + 1):
             # Train model and replace previous global model
             res_fit = self.fit_round(
                 server_round=current_round,
@@ -173,6 +182,7 @@ class WandbServer(Server):
                     )
             # Saver round parameters and files
             self.save_parameters_to_file(self.parameters)
+            self.save_rng_to_file(self.server_rng)
             self.save_files_per_round(current_round)
 
         # Bookkeeping

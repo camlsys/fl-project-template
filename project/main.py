@@ -4,9 +4,9 @@ It includes processing the dataset, instantiate strategy, specifying how the glo
 model will be evaluated, etc. In the end, this script saves the results.
 """
 
-import json
 import logging
 import os
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -14,31 +14,28 @@ from typing import cast
 
 import flwr as fl
 import hydra
+import wandb
 from flwr.common.logger import log
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
-import wandb
-
-# Only import from the project root
-# Never do a relative import nor one that assumes a given folder structure
 from project.client.client import get_client_generator
 from project.dispatch.dispatch import dispatch_config, dispatch_data, dispatch_train
 from project.fed.server.deterministic_client_manager import DeterministicClientManager
 from project.fed.server.wandb_history import WandbHistory
 from project.fed.server.wandb_server import WandbServer
 from project.fed.utils.utils import (
-    get_initial_parameters,
+    get_state,
     get_save_parameters_to_file,
+    get_save_rng_to_file,
     get_weighted_avg_metrics_agg_fn,
     test_client,
 )
-from project.types.common import ClientGen, FedEvalFN
+from project.types.common import ClientGen, FedEvalFN, Folders
 from project.utils.utils import (
     FileSystemManager,
     RayContextManager,
-    seed_everything,
     wandb_init,
 )
 
@@ -97,7 +94,7 @@ def main(cfg: DictConfig) -> None:
     working_dir.mkdir(parents=True, exist_ok=True)
 
     # Wandb context manager
-    # controlls if wandb is initialised or not
+    # controls if wandb is initialized or not
     # if not it returns a dummy run
     with wandb_init(
         cfg.use_wandb,
@@ -119,14 +116,65 @@ def main(cfg: DictConfig) -> None:
             FileSystemManager(
                 working_dir=working_dir,
                 output_dir=results_dir,
+                load_parameters_from=cfg.fed.parameters_folder,
                 to_clean_once=cfg.to_clean_once,
                 to_save_once=cfg.to_save_once,
                 original_hydra_dir=original_hydra_dir,
                 reuse_output_dir=cfg.reuse_output_dir,
+                starting_round=cfg.fed.server_round,
                 file_limit=cfg.file_limit,
             ) as fs_manager,
             RayContextManager() as _ray_manager,
         ):
+            # Path to the saved initial parameters and state
+            # otherwise, we generate a new set of params
+            # with the net_gen
+            if cfg.fed.load_saved_state:
+                # Use the results_dir by default
+                # otherwise use the specified folder
+                parameters_path = (
+                    results_dir / Folders.STATE / Folders.PARAMETERS
+                    if cfg.fed.parameters_folder is None
+                    else Path(cfg.fed.parameters_folder)
+                )
+                rng_path = (
+                    results_dir / Folders.STATE / Folders.RNG
+                    if cfg.fed.rng_folder is None
+                    else Path(cfg.fed.rng_folder)
+                )
+            else:
+                # Generate new parameters
+                parameters_path = None
+                rng_path = None
+
+            # Obtain the net generator, dataloader and fed_dataloader
+            # Change the cfg.task.model_and_data str to change functionality
+            (
+                net_generator,
+                client_dataloader_gen,
+                fed_dataloader_gen,
+            ) = dispatch_data(
+                cfg,
+            )
+
+            # Parameters for the strategy
+            saved_state = get_state(
+                net_generator,
+                cast(
+                    dict,
+                    OmegaConf.to_container(
+                        cfg.task.net_config_initial_parameters,
+                    ),
+                ),
+                load_parameters_from=parameters_path,
+                load_rng_from=rng_path,
+                seed=cfg.fed.seed,
+                server_round=fs_manager.server_round,
+            )
+            initial_parameters, server_rng = saved_state
+
+            server_isolated_rng, client_cid_rng, client_seed_rng = server_rng
+
             # Which files to save every <to_save_per_round> rounds
             # e.g. model checkpoints
             save_files_per_round = fs_manager.get_save_files_every_round(
@@ -134,39 +182,20 @@ def main(cfg: DictConfig) -> None:
                 cfg.save_frequency,
             )
 
-            # For checkpointed runs, adjust the seed
-            # so different clients are sampled
-            adjusted_seed = cfg.fed.seed ^ fs_manager.checkpoint_index
-
             save_parameters_to_file = get_save_parameters_to_file(working_dir)
+            save_rng_to_file = get_save_rng_to_file(working_dir)
 
             # Client manager that samples the same clients
             # For a given seed+checkpoint combination
             client_manager = DeterministicClientManager(
-                adjusted_seed,
-                cfg.fed.enable_resampling,
+                enable_resampling=cfg.fed.enable_resampling,
+                client_cid_generator=client_cid_rng,
             )
 
             # New history that sends data to the wandb server
             # only if use_wandb is True
-            # Minimizes communication to oncer-per-round
+            # Minimizes communication to once-per-round
             history = WandbHistory(cfg.use_wandb)
-
-            # All of these functions are determined by the cfg.task component
-            # change model_and_data and train_structure
-            # If you want to change them
-            # add functionality to project.dispatch and then
-            # to the individual dispatch.py file of each task
-
-            # Obtain the net generator, dataloader and fed_dataloader
-            # Change the cfg.task.model_and_data str to change functionality
-            (
-                net_generator,
-                client_dataloader_gen,
-                fed_dataloater_gen,
-            ) = dispatch_data(
-                cfg,
-            )
 
             # Obtain the train/test func and the fed eval func
             # Change the cfg.task.train_structure str to change functionality
@@ -192,7 +221,7 @@ def main(cfg: DictConfig) -> None:
             # as is the to_container
             evaluate_fn: FedEvalFN | None = get_fed_eval_fn(
                 net_generator,
-                fed_dataloater_gen,
+                fed_dataloader_gen,
                 test_func,
                 cast(
                     dict,
@@ -201,34 +230,7 @@ def main(cfg: DictConfig) -> None:
                     ),
                 ),
                 working_dir,
-            )
-
-            # Path to the save initial parameters
-            # otherwise, we generate a new set of params
-            # with the net_gen
-            if cfg.fed.load_saved_parameters:
-                # Use the results_dir by default
-                # otherwise use the specificed folder
-                parameters_path = (
-                    results_dir / "parameters"
-                    if cfg.fed.use_results_dir
-                    else Path(cfg.fed.parameters_folder)
-                )
-            else:
-                # Generate new parameters
-                parameters_path = None
-
-            # Parameters for the strategy
-            initial_parameters = get_initial_parameters(
-                net_generator,
-                cast(
-                    dict,
-                    OmegaConf.to_container(
-                        cfg.task.net_config_initial_parameters,
-                    ),
-                ),
-                load_from=parameters_path,
-                server_round=cfg.fed.parameters_round,
+                server_isolated_rng,
             )
 
             # Define your strategy
@@ -261,9 +263,12 @@ def main(cfg: DictConfig) -> None:
             # Server that handles Wandb and file saving
             server = WandbServer(
                 client_manager=client_manager,
+                starting_round=fs_manager.server_round,
+                server_rng=server_rng,
                 history=history,
                 strategy=strategy,
                 save_parameters_to_file=save_parameters_to_file,
+                save_rng_to_file=save_rng_to_file,
                 save_files_per_round=save_files_per_round,
             )
 
@@ -275,10 +280,8 @@ def main(cfg: DictConfig) -> None:
                 dataloader_gen=client_dataloader_gen,
                 train=train_func,
                 test=test_func,
+                client_seed_generator=client_seed_rng,
             )
-
-            # Seed everything to maybe improve reproducibility
-            seed_everything(adjusted_seed)
 
             # Runs fit and eval on either one client or all of them
             # Avoids launching ray for debugging purposes
