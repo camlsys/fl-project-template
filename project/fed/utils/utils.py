@@ -1,5 +1,6 @@
 """FL-related utility functions for the project."""
 
+import json
 import random
 import logging
 import struct
@@ -17,7 +18,9 @@ from flwr.common import (
     ndarrays_to_parameters,
     parameters_to_ndarrays,
 )
+from flwr.server.history import History
 from torch import nn
+from project.fed.server.wandb_history import WandbHistory
 
 from project.types.common import (
     ClientCIDandSeedGeneratorsState,
@@ -123,9 +126,11 @@ def get_state(
     config: dict,
     load_parameters_from: Path | None,
     load_rng_from: Path | None,
+    load_history_from: Path | None,
     seed: int,
     server_round: int,
-) -> tuple[Parameters, ServerRNG]:
+    use_wandb: bool,
+) -> tuple[Parameters, ServerRNG, History]:
     """Get initial parameters for the network+rng state if starting from a checkpoint.
 
     Parameters
@@ -142,24 +147,42 @@ def get_state(
     'Parameters
         The parameters.
     """
+    parameters_path = None
     if load_parameters_from is None:
         log(
             logging.INFO,
             "Generating initial parameters with config: %s",
             config,
         )
-        server_rng_tuple = get_and_set_rng(seed, None, None)
+        server_rng_tuple = load_and_set_rng(seed, None, None)
 
         return (
             ndarrays_to_parameters(
                 generic_get_parameters(net_generator(config, server_rng_tuple[0])),
             ),
             server_rng_tuple,
+            load_history(None, None, use_wandb),
         )
     try:
-        return load_parameters_from_file(
+        if server_round is None:
+            return get_state(
+                net_generator,
+                config,
+                None,
+                load_rng_from=None,
+                load_history_from=None,
+                seed=seed,
+                server_round=server_round,
+                use_wandb=use_wandb,
+            )
+        parameters_path = (
             load_parameters_from / f"{Files.PARAMETERS}_{server_round}.{Ext.PARAMETERS}"
-        ), get_and_set_rng(seed, load_rng_from, server_round)
+        )
+        return (
+            load_parameters_from_file(parameters_path),
+            load_and_set_rng(seed, load_rng_from, server_round),
+            load_history(load_history_from, server_round, use_wandb),
+        )
     except (
         ValueError,
         FileNotFoundError,
@@ -170,21 +193,24 @@ def get_state(
     ):
         log(
             logging.INFO,
-            f"Loading parameters failed from: {load_parameters_from}",
+            f"""Loading parameters failed from: {parameters_path}""",
         )
         log(
             logging.INFO,
             "Generating initial parameters with config: %s",
             config,
         )
+        # raise
 
         return get_state(
             net_generator,
             config,
             None,
             load_rng_from=None,
+            load_history_from=None,
             seed=seed,
             server_round=server_round,
+            use_wandb=use_wandb,
         )
 
 
@@ -233,6 +259,55 @@ def get_save_parameters_to_file(
                 f.write(data)
 
     return save_parameters_to_file
+
+
+def get_save_history_to_file(
+    working_dir: Path,
+) -> Callable[[History], None]:
+    """Get a function to save history to a file.
+
+    Parameters
+    ----------
+    working_dir : Path
+        The working directory.
+
+    Returns
+    -------
+    Callable[[History], None]
+        A function to save history to a file.
+    """
+
+    def save_history_to_file(
+        history: History,
+    ) -> None:
+        """Save the history to a file.
+
+        Parameters
+        ----------
+        history : History
+            The history to save.
+
+        Returns
+        -------
+        None
+        """
+        history_path = working_dir / Folders.STATE / Folders.HISTORIES
+        history_path.mkdir(parents=True, exist_ok=True)
+        with open(
+            history_path / f"{Files.HISTORY}.{Ext.HISTORY}",
+            "w",
+            encoding="utf-8",
+        ) as f:
+            # Since Parameters is a list of bytes
+            # save the length of each row and the data
+            # for deserialization
+            json.dump(
+                history.__dict__,
+                f,
+                ensure_ascii=False,
+            )
+
+    return save_history_to_file
 
 
 def extract_rng_state(
@@ -482,7 +557,7 @@ def get_isolated_rng_from_state(
     return seed, rng, np_rng, torch_rng_cpu, torch_rng_gpu
 
 
-def get_and_set_rng(
+def load_and_set_rng(
     seed: int, rng_path: Path | None, server_round: int | None
 ) -> ServerRNG:
     """Get the random state for server/clients.
@@ -509,13 +584,13 @@ def get_and_set_rng(
         torch.manual_seed(seed)
 
         # Create server RNG tuple
-        server_rmg_tuple = get_isolated_rng_tuple(seed, obtain_device())
-        server_random = server_rmg_tuple[1]
+        server_rng_tuple = get_isolated_rng_tuple(seed, obtain_device())
+        server_random = server_rng_tuple[1]
         # Create client cid and seed generators
         client_cid_generator_rng = random.Random(server_random.randint(0, 2**32 - 1))
         client_seed_generator_rng = random.Random(server_random.randint(0, 2**32 - 1))
         log(logging.INFO, f"Using RNG seed: {seed}")
-        return server_rmg_tuple, client_cid_generator_rng, client_seed_generator_rng
+        return server_rng_tuple, client_cid_generator_rng, client_seed_generator_rng
 
     if (
         server_round is not None
@@ -551,4 +626,42 @@ def get_and_set_rng(
         log(logging.INFO, f"Loading RNG state from: {rng_file_path}")
         return server_rng_tuple, client_cid_generator_rng, client_seed_generator_rng
 
-    return get_and_set_rng(seed, None, None)
+    return load_and_set_rng(seed, None, None)
+
+
+def load_history(
+    history_path: Path | None, server_round: int | None, use_wandb: bool
+) -> History:
+    """Load the history.
+
+    Parameters
+    ----------
+    history_path : Optional[Path]
+        The path to the history directory.
+    server_round : Optional[int]
+        The server round.
+
+    Returns
+    -------
+    History
+        The history.
+    """
+    if history_path is None:
+        # Init history
+        return WandbHistory(use_wandb)
+    if (
+        server_round is not None
+        and history_path is not None
+        and (
+            history_file_path := history_path
+            / f"{Files.HISTORY}_{server_round}.{Ext.HISTORY}"
+        ).exists()
+    ):
+        history = WandbHistory(use_wandb)
+
+        # Load previous history
+        with open(history_file_path, encoding="utf-8") as f:
+            history.__dict__ = json.load(f)
+        return history
+
+    return load_history(None, None, use_wandb)

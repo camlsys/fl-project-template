@@ -6,7 +6,6 @@ model will be evaluated, etc. In the end, this script saves the results.
 
 import logging
 import os
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -23,9 +22,9 @@ from omegaconf import DictConfig, OmegaConf
 from project.client.client import get_client_generator
 from project.dispatch.dispatch import dispatch_config, dispatch_data, dispatch_train
 from project.fed.server.deterministic_client_manager import DeterministicClientManager
-from project.fed.server.wandb_history import WandbHistory
 from project.fed.server.wandb_server import WandbServer
 from project.fed.utils.utils import (
+    get_save_history_to_file,
     get_state,
     get_save_parameters_to_file,
     get_save_rng_to_file,
@@ -75,10 +74,6 @@ def main(cfg: DictConfig) -> None:
 
     output_directory = original_hydra_dir
 
-    # Reuse an output directory for checkpointing
-    if cfg.reuse_output_dir is not None:
-        output_directory = Path(cfg.reuse_output_dir)
-
     # The directory to save data to
     results_dir = output_directory / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -120,7 +115,6 @@ def main(cfg: DictConfig) -> None:
                 to_clean_once=cfg.to_clean_once,
                 to_save_once=cfg.to_save_once,
                 original_hydra_dir=original_hydra_dir,
-                reuse_output_dir=cfg.reuse_output_dir,
                 starting_round=cfg.fed.server_round,
                 file_limit=cfg.file_limit,
             ) as fs_manager,
@@ -142,10 +136,16 @@ def main(cfg: DictConfig) -> None:
                     if cfg.fed.rng_folder is None
                     else Path(cfg.fed.rng_folder)
                 )
+                history_path = (
+                    results_dir / Folders.STATE / Folders.HISTORIES
+                    if cfg.fed.history_folder is None
+                    else Path(cfg.fed.history_folder)
+                )
             else:
                 # Generate new parameters
                 parameters_path = None
                 rng_path = None
+                history_path = None
 
             # Obtain the net generator, dataloader and fed_dataloader
             # Change the cfg.task.model_and_data str to change functionality
@@ -168,22 +168,14 @@ def main(cfg: DictConfig) -> None:
                 ),
                 load_parameters_from=parameters_path,
                 load_rng_from=rng_path,
+                load_history_from=history_path,
                 seed=cfg.fed.seed,
                 server_round=fs_manager.server_round,
+                use_wandb=cfg.use_wandb,
             )
-            initial_parameters, server_rng = saved_state
+            initial_parameters, server_rng, history = saved_state
 
             server_isolated_rng, client_cid_rng, client_seed_rng = server_rng
-
-            # Which files to save every <to_save_per_round> rounds
-            # e.g. model checkpoints
-            save_files_per_round = fs_manager.get_save_files_every_round(
-                cfg.to_save_per_round,
-                cfg.save_frequency,
-            )
-
-            save_parameters_to_file = get_save_parameters_to_file(working_dir)
-            save_rng_to_file = get_save_rng_to_file(working_dir)
 
             # Client manager that samples the same clients
             # For a given seed+checkpoint combination
@@ -191,11 +183,6 @@ def main(cfg: DictConfig) -> None:
                 enable_resampling=cfg.fed.enable_resampling,
                 client_cid_generator=client_cid_rng,
             )
-
-            # New history that sends data to the wandb server
-            # only if use_wandb is True
-            # Minimizes communication to once-per-round
-            history = WandbHistory(cfg.use_wandb)
 
             # Obtain the train/test func and the fed eval func
             # Change the cfg.task.train_structure str to change functionality
@@ -267,9 +254,13 @@ def main(cfg: DictConfig) -> None:
                 server_rng=server_rng,
                 history=history,
                 strategy=strategy,
-                save_parameters_to_file=save_parameters_to_file,
-                save_rng_to_file=save_rng_to_file,
-                save_files_per_round=save_files_per_round,
+                save_parameters_to_file=get_save_parameters_to_file(working_dir),
+                save_history_to_file=get_save_history_to_file(working_dir),
+                save_rng_to_file=get_save_rng_to_file(working_dir),
+                save_files_per_round=fs_manager.get_save_files_every_round(
+                    cfg.to_save_per_round,
+                    cfg.save_frequency,
+                ),
             )
 
             # Client generation function for Ray
@@ -343,22 +334,6 @@ def main(cfg: DictConfig) -> None:
                     else {"include_dashboard": False}
                 ),
             )
-
-            # Make a dir for the histories
-            histories_dir = working_dir / "histories"
-            histories_dir.mkdir(parents=True, exist_ok=True)
-
-            # Dump the json rather than the object
-            with open(
-                histories_dir / "history.json",
-                "w",
-                encoding="utf-8",
-            ) as f:
-                json.dump(
-                    history.__dict__,
-                    f,
-                    ensure_ascii=False,
-                )
 
         # Sync the entire results dir to wandb if enabled
         # Only once at the end of the simulation

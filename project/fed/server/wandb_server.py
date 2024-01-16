@@ -30,6 +30,7 @@ class WandbServer(Server):
             None,
         ],
         save_rng_to_file: Callable[[ServerRNG], None],
+        save_history_to_file: Callable[[History], None],
         save_files_per_round: Callable[[int], None],
     ) -> None:
         """Flower server implementation.
@@ -62,6 +63,7 @@ class WandbServer(Server):
         self.starting_round = starting_round
         self.server_rng = server_rng
         self.save_rng_to_file = save_rng_to_file
+        self.save_history_to_file = save_history_to_file
 
     # pylint: disable=too-many-locals
     def fit(
@@ -182,6 +184,7 @@ class WandbServer(Server):
                     )
             # Saver round parameters and files
             self.save_parameters_to_file(self.parameters)
+            self.save_history_to_file(history)
             self.save_rng_to_file(self.server_rng)
             self.save_files_per_round(current_round)
 

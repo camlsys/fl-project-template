@@ -218,7 +218,7 @@ def get_highest_round(
     )
 
     indicies = (
-        int(v.group(1))
+        int(v.group(1)) if v.group(1) != "latest" else 0
         for f in same_name_files
         if (v := re.search(r"_([0-9]+)", f.stem))
     )
@@ -253,10 +253,18 @@ def save_files(
         if file.is_file():
             for save_token in to_save:
                 if save_token in file.name and file.exists():
+                    # Save the round file
                     destination_file = (
                         output_dir
                         / file.with_stem(
                             f"{file.stem}_{server_round}",
+                        ).name
+                    )
+
+                    latest_file = (
+                        output_dir
+                        / file.with_stem(
+                            f"{file.stem}_latest",
                         ).name
                     )
 
@@ -265,6 +273,7 @@ def save_files(
                         exist_ok=True,
                     )
                     shutil.copy(file, destination_file)
+                    shutil.copy(file, latest_file)
                     break
         else:
             children.append(file)
@@ -290,7 +299,6 @@ class FileSystemManager:
         to_clean_once: list[str],
         to_save_once: list[str],
         original_hydra_dir: Path,
-        reuse_output_dir: bool,
         starting_round: int | None,
         file_limit: int | None = None,
     ) -> None:
@@ -309,8 +317,6 @@ class FileSystemManager:
         original_hydra_dir : Path
             The original hydra directory.
             For copying the hydra directory to the working directory.
-        reuse_output_dir : bool
-            Whether to reuse the output directory.
         file_limit : Optional[int]
             The maximal number of files to search.
             If None, then there is no limit.
@@ -324,7 +330,6 @@ class FileSystemManager:
         self.output_dir = output_dir
         self.to_save_once = to_save_once
         self.original_hydra_dir = original_hydra_dir
-        self.reuse_output_dir = reuse_output_dir
 
         highest_round = get_highest_round(
             parameters_dir=(

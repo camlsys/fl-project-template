@@ -6,10 +6,18 @@ defaults:
   - strategy: fedavg
   - dataset: default
 
-# If running the same experiment multiple times
+# The output dir to use for results
+# and checkpointing
+# If null, defaults to the hydra output
+output_dir: null
+
+# If checkpointing is enabled,
 # you may wish to save results to the same directory
-# if null, defaults to the hydra dir
-reuse_output_dir: null
+# Uncomment the following block and set the output directory above
+# to the desired location 
+# hydra:
+#   run:
+#     dir: ${output_dir}
 
 # Working dir to save temporary files to
 # If null, defaults to hydra_dir/working

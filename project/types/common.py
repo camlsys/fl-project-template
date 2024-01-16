@@ -156,6 +156,7 @@ class Folders(enum.StrEnum):
     STATE = enum.auto()
     PARAMETERS = enum.auto()
     RNG = enum.auto()
+    HISTORIES = enum.auto()
 
 
 class Files(enum.StrEnum):
@@ -163,6 +164,7 @@ class Files(enum.StrEnum):
 
     PARAMETERS = enum.auto()
     RNG_STATE = "rng-state"
+    HISTORY = enum.auto()
 
 
 class Ext(enum.StrEnum):
@@ -170,3 +172,4 @@ class Ext(enum.StrEnum):
 
     PARAMETERS = "bin"
     RNG_STATE = "pt"
+    HISTORY = "json"

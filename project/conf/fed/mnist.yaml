@@ -31,3 +31,5 @@ parameters_folder: null
 
 # Path to the folder where the random number generators are located, leave null if you want to use automatic detection from the results folder
 rng_folder: null
+
+history_folder: null
