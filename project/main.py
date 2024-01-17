@@ -21,7 +21,7 @@ from omegaconf import DictConfig, OmegaConf
 
 import wandb
 
-# Only import from the project root,
+# Only import from the project root
 # Never do a relative import nor one that assumes a given folder structure
 from project.client.client import get_client_generator
 from project.dispatch.dispatch import dispatch_config, dispatch_data, dispatch_train
