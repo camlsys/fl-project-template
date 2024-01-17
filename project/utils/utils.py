@@ -175,7 +175,7 @@ def load_wandb_run_details(wandb_dir: Path) -> WandbDetails | None:
         return None
 
     with open(
-        wandb_dir / f"{Files.WANDB_RUN}.{Ext.WANDB_RUN}",
+        wandb_file,
         encoding="utf-8",
     ) as f:
         return WandbDetails(**json.load(f))
