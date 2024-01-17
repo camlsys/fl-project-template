@@ -1,0 +1,21 @@
+name: Mirror to Public Repo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Push to Public Repo
+        run: |
+          git config --global user.email "iacobalexandruandrei@gmail.com"
+          git config --global user.name "Alexandru-Andrei Iacob"
+          git remote add public https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/Iacob-Alexandru-Andrei/fl-project-template.git
+          git push public HEAD:main
