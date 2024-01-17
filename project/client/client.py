@@ -17,6 +17,7 @@ from project.fed.utils.utils import (
     get_isolated_rng_tuple,
 )
 from project.types.common import (
+    CID,
     ClientDataloaderGen,
     ClientGen,
     EvalRes,
@@ -56,7 +57,7 @@ class Client(fl.client.NumPyClient):
 
     def __init__(
         self,
-        cid: int | str | Path,
+        cid: CID,
         working_dir: Path,
         net_generator: NetGen,
         dataloader_gen: ClientDataloaderGen,
@@ -71,7 +72,7 @@ class Client(fl.client.NumPyClient):
 
         Parameters
         ----------
-        cid : int | str
+        cid : int | str | Path
             The client's ID.
         working_dir : Path
             The path to the working directory.
@@ -307,12 +308,12 @@ def get_client_generator(
         The function which creates a new Client.
     """
 
-    def client_generator(cid: int | str) -> Client:
+    def client_generator(cid: CID) -> Client:
         """Return a new Client.
 
         Parameters
         ----------
-        cid : int | str
+        cid : int | str | Path
             The client's ID.
 
         Returns
