@@ -87,13 +87,13 @@ class WandbServer(Server):
             Potentially using a pre-defined history.
         """
         history = self.history if self.history is not None else History()
+        # Initialize parameters
+        log(INFO, "Initializing global parameters")
+        self.parameters = self._get_initial_parameters(
+            timeout=timeout,
+        )
 
         if self.starting_round == 0:
-            # Initialize parameters
-            log(INFO, "Initializing global parameters")
-            self.parameters = self._get_initial_parameters(
-                timeout=timeout,
-            )
             log(INFO, "Evaluating initial parameters")
             res = self.strategy.evaluate(
                 0,

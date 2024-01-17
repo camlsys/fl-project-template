@@ -6,18 +6,13 @@ defaults:
   - strategy: fedavg
   - dataset: default
 
-# The output dir to use for results
-# and checkpointing
-# If null, defaults to the hydra output
-output_dir: null
-
 # If checkpointing is enabled,
 # you may wish to save results to the same directory
-# Uncomment the following block and set the output directory above
-# to the desired location 
-# hydra:
-#   run:
-#     dir: ${output_dir}
+# just change the dir to {your_output_directory}
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    # dir: /path/to/your/output/directory
 
 # Working dir to save temporary files to
 # If null, defaults to hydra_dir/working
@@ -25,7 +20,7 @@ working_dir: null
 
 # List of file patterns to be saved from working_dir
 # at the end of training
-to_save_once: [yaml, log]
+to_save_once: [yaml, log, wandb]
 
 # List of file patterns to be saved repeatedly
 to_save_per_round: [parameters, rng, history]
@@ -44,6 +39,16 @@ use_wandb: false
 debug_clients:
   all: false
   one: true
+
+# If to automatically resume wand runs
+wandb_resume: ${use_wandb}
+
+# The id of the wandb run to resume
+# If null and wandb_resume, tries to detect
+# the wandb_id from the hydra config files
+# if using checkpointing, otherwise
+# creates a new run
+wandb_id: null
 
 # Wandb configuration
 # add whatever tags you like

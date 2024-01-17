@@ -3,6 +3,7 @@
 Generic utilities.
 """
 
+import json
 import logging
 import re
 import shutil
@@ -11,14 +12,17 @@ from itertools import chain
 from pathlib import Path
 from types import TracebackType
 from typing import Any, cast
+from pydantic import BaseModel
 
 import ray
 import torch
 from flwr.common.logger import log
 from project.fed.utils.utils import Files
 import wandb
+from wandb.sdk.wandb_run import Run
+from wandb.sdk.lib.disabled import RunDisabled
 
-from project.types.common import Folders, IsolatedRNG
+from project.types.common import Ext, Folders, IsolatedRNG
 
 
 def obtain_device() -> torch.device:
@@ -90,7 +94,7 @@ def wandb_init(
     wandb_enabled: bool,
     *args: Any,
     **kwargs: Any,
-) -> NoOpContextManager | Any:
+) -> NoOpContextManager | Run | RunDisabled:
     """Initialize wandb if enabled.
 
     Parameters
@@ -108,9 +112,73 @@ def wandb_init(
         The wandb context manager if enabled, otherwise a no-op context manager
     """
     if wandb_enabled:
-        return wandb.init(*args, **kwargs)
+        run = wandb.init(*args, **kwargs)
+        if run is not None:
+            return run
 
     return NoOpContextManager()
+
+
+class WandbDetails(BaseModel):
+    """The wandb details."""
+
+    wandb_id: str
+
+
+def save_wandb_run_details(run: Run, wandb_dir: Path) -> None:
+    """Save the wandb run to the output directory.
+
+    Parameters
+    ----------
+    run : Run
+        The wandb run.
+    wandb_dir : Path
+        The output directory.
+
+    Returns
+    -------
+        None
+    """
+    wandb_run_details: dict[str, str] = {
+        "wandb_id": run.id,
+    }
+
+    # Check if it conforms to the WandbDetails schema
+    WandbDetails(**wandb_run_details)
+
+    wandb_dir.mkdir(parents=True, exist_ok=True)
+    with open(
+        wandb_dir / f"{Files.WANDB_RUN}.{Ext.WANDB_RUN}",
+        mode="w",
+        encoding="utf-8",
+    ) as f:
+        json.dump(wandb_run_details, f)
+
+
+def load_wandb_run_details(wandb_dir: Path) -> WandbDetails | None:
+    """Save the wandb run to the wandb_dir directory.
+
+    Parameters
+    ----------
+    run : Run
+        The wandb run.
+    wandb_dir : Path
+        The output directory.
+
+    Returns
+    -------
+        None
+    """
+    wandb_file = wandb_dir / f"{Files.WANDB_RUN}.{Ext.WANDB_RUN}"
+
+    if not wandb_file.exists():
+        return None
+
+    with open(
+        wandb_dir / f"{Files.WANDB_RUN}.{Ext.WANDB_RUN}",
+        encoding="utf-8",
+    ) as f:
+        return WandbDetails(**json.load(f))
 
 
 class RayContextManager:
@@ -218,7 +286,7 @@ def get_highest_round(
     )
 
     indicies = (
-        int(v.group(1)) if v.group(1) != "latest" else 0
+        int(v.group(1))
         for f in same_name_files
         if (v := re.search(r"_([0-9]+)", f.stem))
     )
@@ -264,7 +332,7 @@ def save_files(
                     latest_file = (
                         output_dir
                         / file.with_stem(
-                            f"{file.stem}_latest",
+                            f"{file.stem}",
                         ).name
                     )
 
@@ -401,19 +469,19 @@ class FileSystemManager:
         # Copy the hydra directory to the working directory
         # so that multiple runs can be ran
         # in the same output directory and configs versioned
-        hydra_dir = self.working_dir / ".hydra"
+        hydra_dir = self.working_dir / Folders.HYDRA
 
         shutil.copytree(
-            str(self.original_hydra_dir / ".hydra"),
+            str(self.original_hydra_dir / Folders.HYDRA),
             str(object=hydra_dir),
             dirs_exist_ok=True,
         )
 
         # Move main.log to the working directory
-        main_log = self.original_hydra_dir / "main.log"
+        main_log = self.original_hydra_dir / f"{Files.MAIN}.{Ext.MAIN}"
         shutil.copy2(
             str(main_log),
-            str(self.working_dir / "main.log"),
+            str(self.working_dir / f"{Files.MAIN}.{Ext.MAIN}"),
         )
         save_files(
             self.working_dir,

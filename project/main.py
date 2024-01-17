@@ -10,10 +10,12 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import cast
+import uuid
 
 import flwr as fl
 import hydra
 import wandb
+from wandb.sdk.wandb_run import Run
 from flwr.common.logger import log
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
@@ -35,6 +37,8 @@ from project.types.common import ClientGen, FedEvalFN, Folders
 from project.utils.utils import (
     FileSystemManager,
     RayContextManager,
+    load_wandb_run_details,
+    save_wandb_run_details,
     wandb_init,
 )
 
@@ -75,7 +79,7 @@ def main(cfg: DictConfig) -> None:
     output_directory = original_hydra_dir
 
     # The directory to save data to
-    results_dir = output_directory / "results"
+    results_dir = output_directory / Folders.RESULTS
     results_dir.mkdir(parents=True, exist_ok=True)
 
     # Where to save files to and from
@@ -84,9 +88,19 @@ def main(cfg: DictConfig) -> None:
         working_dir = Path(cfg.working_dir)
     else:
         # Default directory
-        working_dir = output_directory / "working"
+        working_dir = output_directory / Folders.WORKING
 
     working_dir.mkdir(parents=True, exist_ok=True)
+
+    # Restore wandb runs automatically
+    wandb_id = None
+    if cfg.use_wandb and cfg.wandb_resume:
+        if cfg.wandb_id is not None:
+            wandb_id = cfg.wandb_id
+        elif (
+            saved_wandb_details := load_wandb_run_details(results_dir / Folders.WANDB)
+        ) is not None:
+            wandb_id = saved_wandb_details.wandb_id
 
     # Wandb context manager
     # controls if wandb is initialized or not
@@ -96,7 +110,11 @@ def main(cfg: DictConfig) -> None:
         **cfg.wandb.setup,
         settings=wandb.Settings(start_method="thread"),
         config=wandb_config,
+        resume="must" if cfg.wandb_resume and wandb_id is not None else "allow",
+        id=wandb_id if wandb_id is not None else uuid.uuid4().hex,
     ) as run:
+        if cfg.use_wandb:
+            save_wandb_run_details(cast(Run, run), working_dir / Folders.WANDB)
         log(
             logging.INFO,
             "Wandb run initialized with %s",
@@ -120,33 +138,6 @@ def main(cfg: DictConfig) -> None:
             ) as fs_manager,
             RayContextManager() as _ray_manager,
         ):
-            # Path to the saved initial parameters and state
-            # otherwise, we generate a new set of params
-            # with the net_gen
-            if cfg.fed.load_saved_state:
-                # Use the results_dir by default
-                # otherwise use the specified folder
-                parameters_path = (
-                    results_dir / Folders.STATE / Folders.PARAMETERS
-                    if cfg.fed.parameters_folder is None
-                    else Path(cfg.fed.parameters_folder)
-                )
-                rng_path = (
-                    results_dir / Folders.STATE / Folders.RNG
-                    if cfg.fed.rng_folder is None
-                    else Path(cfg.fed.rng_folder)
-                )
-                history_path = (
-                    results_dir / Folders.STATE / Folders.HISTORIES
-                    if cfg.fed.history_folder is None
-                    else Path(cfg.fed.history_folder)
-                )
-            else:
-                # Generate new parameters
-                parameters_path = None
-                rng_path = None
-                history_path = None
-
             # Obtain the net generator, dataloader and fed_dataloader
             # Change the cfg.task.model_and_data str to change functionality
             (
@@ -157,7 +148,13 @@ def main(cfg: DictConfig) -> None:
                 cfg,
             )
 
-            # Parameters for the strategy
+            # Parameters/rng/history state for the strategy
+            # Uses the path to the saved initial parameters and state
+            # If none are available, new ones will be generated
+
+            # Use the results_dir by default
+            # otherwise use the specified folder
+
             saved_state = get_state(
                 net_generator,
                 cast(
@@ -166,9 +163,21 @@ def main(cfg: DictConfig) -> None:
                         cfg.task.net_config_initial_parameters,
                     ),
                 ),
-                load_parameters_from=parameters_path,
-                load_rng_from=rng_path,
-                load_history_from=history_path,
+                load_parameters_from=(
+                    results_dir / Folders.STATE / Folders.PARAMETERS
+                    if cfg.fed.parameters_folder is None
+                    else Path(cfg.fed.parameters_folder)
+                ),
+                load_rng_from=(
+                    results_dir / Folders.STATE / Folders.RNG
+                    if cfg.fed.rng_folder is None
+                    else Path(cfg.fed.rng_folder)
+                ),
+                load_history_from=(
+                    results_dir / Folders.STATE / Folders.HISTORIES
+                    if cfg.fed.history_folder is None
+                    else Path(cfg.fed.history_folder)
+                ),
                 seed=cfg.fed.seed,
                 server_round=fs_manager.server_round,
                 use_wandb=cfg.use_wandb,
@@ -254,9 +263,21 @@ def main(cfg: DictConfig) -> None:
                 server_rng=server_rng,
                 history=history,
                 strategy=strategy,
-                save_parameters_to_file=get_save_parameters_to_file(working_dir),
-                save_history_to_file=get_save_history_to_file(working_dir),
-                save_rng_to_file=get_save_rng_to_file(working_dir),
+                save_parameters_to_file=get_save_parameters_to_file(
+                    working_dir / Folders.STATE / Folders.PARAMETERS
+                    if cfg.fed.parameters_folder is None
+                    else Path(cfg.fed.parameters_folder)
+                ),
+                save_history_to_file=get_save_history_to_file(
+                    working_dir / Folders.STATE / Folders.HISTORIES
+                    if cfg.fed.history_folder is None
+                    else Path(cfg.fed.history_folder)
+                ),
+                save_rng_to_file=get_save_rng_to_file(
+                    working_dir / Folders.STATE / Folders.RNG
+                    if cfg.fed.rng_folder is None
+                    else Path(cfg.fed.rng_folder)
+                ),
                 save_files_per_round=fs_manager.get_save_files_every_round(
                     cfg.to_save_per_round,
                     cfg.save_frequency,
@@ -343,6 +364,26 @@ def main(cfg: DictConfig) -> None:
                 str((results_dir).resolve()),
                 "now",
             )
+
+            if cfg.fed.parameters_folder is not None:
+                run.save(
+                    str((Path(cfg.fed.parameters_folder) / "*").resolve()),
+                    str((Path(cfg.fed.parameters_folder)).resolve()),
+                    "now",
+                )
+            if cfg.fed.history_folder is not None:
+                run.save(
+                    str((Path(cfg.fed.history_folder) / "*").resolve()),
+                    str((Path(cfg.fed.history_folder)).resolve()),
+                    "now",
+                )
+            if cfg.fed.rng_folder is not None:
+                run.save(
+                    str((Path(cfg.fed.rng_folder) / "*").resolve()),
+                    str((Path(cfg.fed.rng_folder)).resolve()),
+                    "now",
+                )
+
             # Try to empty the wandb folder of old local runs
             log(
                 logging.INFO,

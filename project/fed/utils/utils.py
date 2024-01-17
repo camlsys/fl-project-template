@@ -27,7 +27,6 @@ from project.types.common import (
     ClientGen,
     Ext,
     Files,
-    Folders,
     IsolatedRNGState,
     IsolatedRNG,
     ServerRNG,
@@ -215,14 +214,14 @@ def get_state(
 
 
 def get_save_parameters_to_file(
-    working_dir: Path,
+    parameters_dir: Path,
 ) -> Callable[[Parameters], None]:
     """Get a function to save parameters to a file.
 
     Parameters
     ----------
-    working_dir : Path
-        The working directory.
+    parameters_dir : Path
+        The parameters directory.
 
     Returns
     -------
@@ -244,10 +243,9 @@ def get_save_parameters_to_file(
         -------
         None
         """
-        parameters_path = working_dir / Folders.STATE / Folders.PARAMETERS
-        parameters_path.mkdir(parents=True, exist_ok=True)
+        parameters_dir.mkdir(parents=True, exist_ok=True)
         with open(
-            parameters_path / f"{Files.PARAMETERS}.{Ext.PARAMETERS}",
+            parameters_dir / f"{Files.PARAMETERS}.{Ext.PARAMETERS}",
             "wb",
         ) as f:
             # Since Parameters is a list of bytes
@@ -262,14 +260,14 @@ def get_save_parameters_to_file(
 
 
 def get_save_history_to_file(
-    working_dir: Path,
+    history_dir: Path,
 ) -> Callable[[History], None]:
     """Get a function to save history to a file.
 
     Parameters
     ----------
-    working_dir : Path
-        The working directory.
+    history_dir : Path
+        The history directory.
 
     Returns
     -------
@@ -291,10 +289,9 @@ def get_save_history_to_file(
         -------
         None
         """
-        history_path = working_dir / Folders.STATE / Folders.HISTORIES
-        history_path.mkdir(parents=True, exist_ok=True)
+        history_dir.mkdir(parents=True, exist_ok=True)
         with open(
-            history_path / f"{Files.HISTORY}.{Ext.HISTORY}",
+            history_dir / f"{Files.HISTORY}.{Ext.HISTORY}",
             "w",
             encoding="utf-8",
         ) as f:
@@ -338,14 +335,14 @@ def extract_rng_state(
 
 
 def get_save_rng_to_file(
-    working_dir: Path,
+    rng_dir: Path,
 ) -> Callable[[ServerRNG], None]:
     """Get a function to save the rng state to a file.
 
     Parameters
     ----------
-    working_dir : Path
-        The working directory.
+    rng_dir : Path
+        The rng directory.
 
     Returns
     -------
@@ -367,8 +364,7 @@ def get_save_rng_to_file(
         -------
         None
         """
-        rng_path = working_dir / Folders.STATE / Folders.RNG
-        rng_path.mkdir(parents=True, exist_ok=True)
+        rng_dir.mkdir(parents=True, exist_ok=True)
 
         rng_global_state = random.getstate()
         np_rng_global_state = np.random.get_state()
@@ -390,7 +386,7 @@ def get_save_rng_to_file(
             cid_seed_generators_state,
         )
 
-        torch.save(state, rng_path / f"{Files.RNG_STATE}.{Ext.RNG_STATE}")
+        torch.save(state, rng_dir / f"{Files.RNG_STATE}.{Ext.RNG_STATE}")
 
     return save_rng_to_file
 
