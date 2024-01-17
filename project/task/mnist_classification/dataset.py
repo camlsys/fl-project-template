@@ -11,7 +11,12 @@ from project.task.default.dataset import (
 from project.task.default.dataset import (
     FedDataloaderConfig as DefaultFedDataloaderConfig,
 )
-from project.types.common import ClientDataloaderGen, FedDataloaderGen
+from project.types.common import (
+    CID,
+    ClientDataloaderGen,
+    FedDataloaderGen,
+    IsolatedRNG,
+)
 
 # Use defaults for this very simple dataset
 # Requires only batch size
@@ -39,9 +44,7 @@ def get_dataloader_generators(
     """
 
     def get_client_dataloader(
-        cid: str | int,
-        test: bool,
-        _config: dict,
+        cid: CID, test: bool, _config: dict, rng_tuple: IsolatedRNG
     ) -> DataLoader:
         """Return a DataLoader for a client's dataset.
 
@@ -51,8 +54,11 @@ def get_dataloader_generators(
             The client's ID
         test : bool
             Whether to load the test set or not
-        config : Dict
+        _config : Dict
             The configuration for the dataset
+        rng_tuple : IsolatedRNGTuple
+            The random number generator state for the training.
+            Use if you need seeded random behavior
 
         Returns
         -------
@@ -61,6 +67,8 @@ def get_dataloader_generators(
         """
         config: ClientDataloaderConfig = ClientDataloaderConfig(**_config)
         del _config
+
+        torch_cpu_generator = rng_tuple[3]
 
         client_dir = partition_dir / f"client_{cid}"
         if not test:
@@ -71,11 +79,11 @@ def get_dataloader_generators(
             dataset,
             batch_size=config.batch_size,
             shuffle=not test,
+            generator=torch_cpu_generator,
         )
 
     def get_federated_dataloader(
-        test: bool,
-        _config: dict,
+        test: bool, _config: dict, rng_tuple: IsolatedRNG
     ) -> DataLoader:
         """Return a DataLoader for federated train/test sets.
 
@@ -85,6 +93,9 @@ def get_dataloader_generators(
             Whether to load the test set or not
         config : Dict
             The configuration for the dataset
+        rng_tuple : IsolatedRNGTuple
+            The random number generator state for the training.
+            Use if you need seeded random behavior
 
         Returns
         -------
@@ -95,18 +106,21 @@ def get_dataloader_generators(
             **_config,
         )
         del _config
+        torch_cpu_generator = rng_tuple[3]
 
         if not test:
             return DataLoader(
                 torch.load(partition_dir / "train.pt"),
                 batch_size=config.batch_size,
                 shuffle=not test,
+                generator=torch_cpu_generator,
             )
 
         return DataLoader(
             torch.load(partition_dir / "test.pt"),
             batch_size=config.batch_size,
             shuffle=not test,
+            generator=torch_cpu_generator,
         )
 
     return get_client_dataloader, get_federated_dataloader

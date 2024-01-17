@@ -19,17 +19,17 @@ seed: 1337
 # Settings for loading the initial parameters 
 # used by the server
 
-# If the server should try to load saved parameters, if it fails it will do the normal procedure of generating a random net
-# Leave on as true in case you need to enable checkpointing later on
-load_saved_parameters: true
+# If the server should try to load saved parameters and rng, if it fails it will do the normal procedure of generating a random net
+# Leave on as true in case you need to enable checkpoints later on
+load_saved_state: true
 # The round from which to load the parameters
 # if null it will load the most recent round
-parameters_round: null
+server_round: null
 
-# Path to the folder where the parameters are located, leave null if you want to use automatic detecting with the next option
+# Path to the folder where the parameters are located,  leave null if you want to use automatic detection from the results folder
 parameters_folder: null
 
-# If reusing an output directory for checkpointing
-# it will automatically load the requested round from results/parameters
-# Leave as true unless you want to customise this behaviour
-use_results_dir: true
+# Path to the folder where the random number generators are located, leave null if you want to use automatic detection from the results folder
+rng_folder: null
+
+history_folder: null
