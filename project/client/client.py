@@ -3,6 +3,7 @@
 Make sure the model and dataset are not loaded before the fit function.
 """
 
+import random
 from pathlib import Path
 
 import flwr as fl
@@ -10,8 +11,13 @@ from flwr.common import NDArrays
 from pydantic import BaseModel
 from torch import nn
 
-from project.fed.utils.utils import generic_get_parameters, generic_set_parameters
+from project.fed.utils.utils import (
+    generic_get_parameters,
+    generic_set_parameters,
+    get_isolated_rng_tuple,
+)
 from project.types.common import (
+    CID,
     ClientDataloaderGen,
     ClientGen,
     EvalRes,
@@ -24,9 +30,9 @@ from project.utils.utils import obtain_device
 
 
 class ClientConfig(BaseModel):
-    """Fit/eval config, allows '.' member acces and static checking.
+    """Fit/eval config, allows '.' member access and static checking.
 
-    Used to check weather each component has its own independent config present. Each
+    Used to check whether each component has its own independent config present. Each
     component should then use its own Pydantic model to validate its config. For
     anything extra, use the extra field as a simple dict.
     """
@@ -49,14 +55,15 @@ class ClientConfig(BaseModel):
 class Client(fl.client.NumPyClient):
     """Virtual client for ray."""
 
-    def __init__(  # noqa: PLR0917
+    def __init__(
         self,
-        cid: int | str,
+        cid: CID,
         working_dir: Path,
         net_generator: NetGen,
         dataloader_gen: ClientDataloaderGen,
         train: TrainFunc,
         test: TestFunc,
+        client_seed: int,
     ) -> None:
         """Initialize the client.
 
@@ -65,7 +72,7 @@ class Client(fl.client.NumPyClient):
 
         Parameters
         ----------
-        cid : int | str
+        cid : int | str | Path
             The client's ID.
         working_dir : Path
             The path to the working directory.
@@ -87,6 +94,11 @@ class Client(fl.client.NumPyClient):
         self.dataloader_gen = dataloader_gen
         self.train = train
         self.test = test
+
+        # For deterministic client execution
+        # The client_seed is generated from a specific Generator
+        self.client_seed = client_seed
+        self.rng_tuple = get_isolated_rng_tuple(self.client_seed, obtain_device())
 
     def fit(
         self,
@@ -115,6 +127,7 @@ class Client(fl.client.NumPyClient):
         del _config
 
         config.run_config["device"] = obtain_device()
+
         self.net = self.set_parameters(
             parameters,
             config.net_config,
@@ -123,13 +136,16 @@ class Client(fl.client.NumPyClient):
             self.cid,
             False,
             config.dataloader_config,
+            self.rng_tuple,
         )
         num_samples, metrics = self.train(
             self.net,
             trainloader,
             config.run_config,
             self.working_dir,
+            self.rng_tuple,
         )
+
         return (
             generic_get_parameters(self.net),
             num_samples,
@@ -163,6 +179,7 @@ class Client(fl.client.NumPyClient):
         del _config
 
         config.run_config["device"] = obtain_device()
+
         self.net = self.set_parameters(
             parameters,
             config.net_config,
@@ -171,12 +188,14 @@ class Client(fl.client.NumPyClient):
             self.cid,
             True,
             config.dataloader_config,
+            self.rng_tuple,
         )
         loss, num_samples, metrics = self.test(
             self.net,
             testloader,
             config.run_config,
             self.working_dir,
+            self.rng_tuple,
         )
         return loss, num_samples, metrics
 
@@ -227,7 +246,7 @@ class Client(fl.client.NumPyClient):
         nn.Module
             The network with the new parameters.
         """
-        net = self.net_generator(config)
+        net = self.net_generator(config, self.rng_tuple)
         generic_set_parameters(
             net,
             parameters,
@@ -250,6 +269,7 @@ def get_client_generator(
     dataloader_gen: ClientDataloaderGen,
     train: TrainFunc,
     test: TestFunc,
+    client_seed_generator: random.Random,
 ) -> ClientGen:
     """Return a function which creates a new Client.
 
@@ -274,6 +294,13 @@ def get_client_generator(
     test : TestFunc
         The test function.
         Please respect the interface and pydantic schema.
+    seed : int
+        The global seed for the random number generators.
+    random_state : tuple[Any,Any,Any]
+        The random state for the random number generator.
+    np_random_state : dict[str,Any]
+        The numpy random state for the random number generator.
+    torch_random_state : torch.Tensor
 
     Returns
     -------
@@ -281,12 +308,12 @@ def get_client_generator(
         The function which creates a new Client.
     """
 
-    def client_generator(cid: int | str) -> Client:
+    def client_generator(cid: CID) -> Client:
         """Return a new Client.
 
         Parameters
         ----------
-        cid : int | str
+        cid : int | str | Path
             The client's ID.
 
         Returns
@@ -301,6 +328,7 @@ def get_client_generator(
             dataloader_gen,
             train,
             test,
+            client_seed=client_seed_generator.randint(0, 2**32 - 1),
         )
 
     return client_generator

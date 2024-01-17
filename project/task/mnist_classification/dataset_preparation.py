@@ -49,7 +49,7 @@ def _download_data(
 
 
 # pylint: disable=too-many-locals
-def _partition_data(  # noqa: PLR0917
+def _partition_data(
     trainset: MNIST,
     testset: MNIST,
     num_clients: int,
@@ -257,7 +257,7 @@ def _sort_by_class(
 
 
 # pylint: disable=too-many-locals, too-many-arguments
-def _power_law_split(  # noqa: PLR0917
+def _power_law_split(
     sorted_trainset: MNIST,
     num_partitions: int,
     num_labels_per_partition: int = 2,
@@ -372,7 +372,7 @@ def download_and_preprocess(cfg: DictConfig) -> None:
 
     Please include here all the logic
     Please use the Hydra config style as much as possible specially
-    for parts that can be customised (e.g. how data is partitioned)
+    for parts that can be customized (e.g. how data is partitioned)
 
     Parameters
     ----------
@@ -389,7 +389,7 @@ def download_and_preprocess(cfg: DictConfig) -> None:
 
     # Partition the dataset
     # ideally, the fed_test_set can be composed in three ways:
-    # 1. fed_test_set = centralised test set like MNIST
+    # 1. fed_test_set = centralized test set like MNIST
     # 2. fed_test_set = concatenation of all test sets of all clients
     # 3. fed_test_set = test sets of reserved unseen clients
     client_datasets, fed_test_set = _partition_data(
@@ -407,8 +407,8 @@ def download_and_preprocess(cfg: DictConfig) -> None:
     partition_dir = Path(cfg.dataset.partition_dir)
     partition_dir.mkdir(parents=True, exist_ok=True)
 
-    # Save the centralised test set
-    # a centrailsed training set would also be possible
+    # Save the centralized test set
+    # a centralized training set would also be possible
     # but is not used here
     torch.save(fed_test_set, partition_dir / "test.pt")
 

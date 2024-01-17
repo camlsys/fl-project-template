@@ -8,7 +8,7 @@ You need to write dispatch functions for three categories:
     - net generator and dataloader generator functions
     - fit/eval config functions
 
-The top-level project.dipatch module operates as a pipeline
+The top-level project.dispatch module operates as a pipeline
 and selects the first function which does not return None.
 Do not throw any errors based on not finding
 a given attribute in the configs under any circumstances.
@@ -117,7 +117,7 @@ def dispatch_config(
 
     By default it simply takes the fit_config and evaluate_config
     dicts from the hydra config.
-    Only change if a more complex behaviour
+    Only change if a more complex behavior
     (such as varying the config across rounds) is needed.
 
     Do not throw any errors based on not finding
