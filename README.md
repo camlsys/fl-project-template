@@ -109,7 +109,19 @@ After implementing the task, dynamically starting it via ```hydra``` requires ch
     - ```dispatch_config``` selects the configs used during fit and eval, you will likely not have to change this as the default task provides a sensible version.
 - The ```project.dispatch``` module requires you to add the task-specific ```dispatch_data```, ```dispatch_train``` and ```dispatch_config``` functions from the ```project.<new_task>.dispatch``` module to the list of possible tasks that can match the config. The statically-declared function order determines which task is selected if multiple ones match the config.
 
-Yu have now implemneted an entire new FL task without having to touch any of the FL-specific code. 
+Yu have now implemented an entire new FL task without having to touch any of the FL-specific code.
+
+## Using checkpoints
+
+By default, the entire template is synchronized across server rounds and the model parameters, `RNG` state, `Wandb` run, metric `History`, config files and logs are all checkpointed either every `freq` rounds, or once at the end of training when the process exists. If Wandb is used, any restarted run continues at the exact same link in Wandb with no cumbersome tracking necessary. 
+
+To use the checkpoint system all you have to do is to specify the `hydra.run.dir` to be a previous execution directory rather than the default timestamped output directory. If you wish to restore a specific round rather than the most recent one then modify the `server_round` in the `fed` config.
+
+## Reproducibility  
+One of the primary functionalities of this template is to allow for easily reproducible FL checkpointing. It achieves this by controlling the client sampling, server `RNG`, and client `RNG` seeding and saving the rng states for `Random`, `np`, and `torch`. The server and every client are provided with an isolated RNG generator making them usable in a multithreaded context where the global generators may get accessed unpredictably. 
+
+The `RNG` states of all of the relevant packages and generators are automatically saved and synchronized to the round allowing for reproducible client sample and client execution at the same round. Every relevant piece of client functionality also receives the isolated `RNG` state and can use it to guarantee reproducibility (e.g., the `PyTorch`` dataloader).
+
 ## Template Structure
 
 The template uses poetry with the ``project`` name for the top-level package. All imports are made from this package, and no relative imports are allowed. The structure is as follows:
