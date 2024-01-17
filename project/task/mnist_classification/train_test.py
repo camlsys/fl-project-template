@@ -16,10 +16,11 @@ from project.task.default.train_test import (
 from project.task.default.train_test import (
     get_on_fit_config_fn as get_default_on_fit_config_fn,
 )
+from project.types.common import IsolatedRNG
 
 
 class TrainConfig(BaseModel):
-    """Training configuration, allows '.' member acces and static checking.
+    """Training configuration, allows '.' member access and static checking.
 
     Guarantees that all necessary components are present, fails early if config is
     mismatched to client.
@@ -40,6 +41,7 @@ def train(  # pylint: disable=too-many-arguments
     trainloader: DataLoader,
     _config: dict,
     _working_dir: Path,
+    _rng_tuple: IsolatedRNG,
 ) -> tuple[int, dict]:
     """Train the network on the training set.
 
@@ -53,6 +55,12 @@ def train(  # pylint: disable=too-many-arguments
         The configuration for the training.
         Contains the device, number of epochs and learning rate.
         Static type checking is done by the TrainConfig class.
+    _working_dir : Path
+        The working directory for the training.
+        Unused.
+    _rng_tuple : IsolatedRNGTuple
+        The random number generator state for the training.
+        Use if you need seeded random behavior
 
     Returns
     -------
@@ -107,7 +115,7 @@ def train(  # pylint: disable=too-many-arguments
 
 
 class TestConfig(BaseModel):
-    """Testing configuration, allows '.' member acces and static checking.
+    """Testing configuration, allows '.' member access and static checking.
 
     Guarantees that all necessary components are present, fails early if config is
     mismatched to client.
@@ -126,6 +134,7 @@ def test(
     testloader: DataLoader,
     _config: dict,
     _working_dir: Path,
+    _rng_tuple: IsolatedRNG,
 ) -> tuple[float, int, dict]:
     """Evaluate the network on the test set.
 
@@ -135,10 +144,17 @@ def test(
         The neural network to test.
     testloader : DataLoader
         The DataLoader containing the data to test the network on.
-    config : Dict
+    _config : Dict
         The configuration for the testing.
         Contains the device.
         Static type checking is done by the TestConfig class.
+    _working_dir : Path
+        The working directory for the training.
+        Unused.
+    _rng_tuple : IsolatedRNGTuple
+        The random number generator state for the training.
+        Use if you need seeded random behavior
+
 
     Returns
     -------

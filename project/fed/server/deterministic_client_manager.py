@@ -18,15 +18,15 @@ class DeterministicClientManager(SimpleClientManager):
 
     def __init__(
         self,
-        seed: int,
+        client_cid_generator: random.Random,
         enable_resampling: bool = False,
     ) -> None:
         """Initialize DeterministicClientManager.
 
         Parameters
         ----------
-        seed : int
-            The seed to use for deterministic sampling.
+        client_cid_generator : random.Random
+            A random number generator to generate client cids.
         enable_resampling : bool
             Whether to allow sampling with replacement.
 
@@ -35,8 +35,8 @@ class DeterministicClientManager(SimpleClientManager):
         None
         """
         super().__init__()
-        self.seed = seed
-        self.rng = random.Random(seed)
+
+        self.client_cid_generator = client_cid_generator
         self.enable_resampling = enable_resampling
 
     def sample(
@@ -77,12 +77,12 @@ class DeterministicClientManager(SimpleClientManager):
 
         available_cids = []
         if num_clients <= len(cids):
-            available_cids = self.rng.sample(
+            available_cids = self.client_cid_generator.sample(
                 cids,
                 num_clients,
             )
         elif self.enable_resampling:
-            available_cids = self.rng.choices(
+            available_cids = self.client_cid_generator.choices(
                 cids,
                 k=num_clients,
             )
@@ -102,4 +102,5 @@ class DeterministicClientManager(SimpleClientManager):
             "Sampled the following clients: %s",
             available_cids,
         )
+
         return client_list
