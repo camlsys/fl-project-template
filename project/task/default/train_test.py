@@ -15,6 +15,7 @@ from project.fed.utils.utils import generic_set_parameters
 from project.types.common import (
     FedDataloaderGen,
     FedEvalFN,
+    IsolatedRNG,
     NetGen,
     OnFitConfigFN,
     TestFunc,
@@ -23,7 +24,7 @@ from project.utils.utils import obtain_device
 
 
 class TrainConfig(BaseModel):
-    """Training configuration, allows '.' member acces and static checking.
+    """Training configuration, allows '.' member access and static checking.
 
     Guarantees that all necessary components are present, fails early if config is
     mismatched to client.
@@ -44,6 +45,7 @@ def train(
     trainloader: DataLoader,
     _config: dict,
     _working_dir: Path,
+    rng_tuple: IsolatedRNG,
 ) -> tuple[int, dict]:
     """Train the network on the training set.
 
@@ -57,6 +59,12 @@ def train(
         The configuration for the training.
         Contains the device, number of epochs and learning rate.
         Static type checking is done by the TrainConfig class.
+    _working_dir : Path
+        The working directory for the training.
+        Unused.
+    _rng_tuple : IsolatedRNGTuple
+        The random number generator state for the training.
+        Use if you need seeded random behavior
 
     Returns
     -------
@@ -79,7 +87,7 @@ def train(
 
 
 class TestConfig(BaseModel):
-    """Testing configuration, allows '.' member acces and static checking.
+    """Testing configuration, allows '.' member access and static checking.
 
     Guarantees that all necessary components are present, fails early if config is
     mismatched to client.
@@ -98,6 +106,7 @@ def test(
     testloader: DataLoader,
     _config: dict,
     _working_dir: Path,
+    rng_tuple: IsolatedRNG,
 ) -> tuple[float, int, dict]:
     """Evaluate the network on the test set.
 
@@ -107,10 +116,16 @@ def test(
         The neural network to test.
     testloader : DataLoader
         The DataLoader containing the data to test the network on.
-    config : Dict
+    _config : Dict
         The configuration for the testing.
         Contains the device.
         Static type checking is done by the TestConfig class.
+    _working_dir : Path
+        The working directory for the training.
+        Unused.
+    _rng_tuple : IsolatedRNGTuple
+        The random number generator state for the training.
+        Use if you need seeded random behavior
 
     Returns
     -------
@@ -138,10 +153,11 @@ def test(
 
 def get_fed_eval_fn(
     net_generator: NetGen,
-    fed_dataloater_generator: FedDataloaderGen,
+    fed_dataloader_generator: FedDataloaderGen,
     test_func: TestFunc,
     _config: dict,
     working_dir: Path,
+    rng_tuple: IsolatedRNG,
 ) -> FedEvalFN | None:
     """Get the federated evaluation function.
 
@@ -149,8 +165,19 @@ def get_fed_eval_fn(
     ----------
     net_generator : NetGenerator
         The function to generate the network.
-    testloader : DataLoader
+    fed_dataloader_generator : DataLoader
         The DataLoader containing the data to test the network on.
+    test_func : TestFunc
+        The function to evaluate the network.
+    _config : Dict
+        The configuration for the testing.
+        Contains the device.
+        Static type checking is done by the TestConfig class.
+    working_dir : Path
+        The working directory for the training.
+    _rng_tuple : IsolatedRNGTuple
+        The random number generator state for the training.
+        Use if you need seeded random behavior
 
     Returns
     -------
@@ -161,9 +188,10 @@ def get_fed_eval_fn(
     config: ClientConfig = ClientConfig(**_config)
     del _config
 
-    testloader = fed_dataloater_generator(
+    testloader = fed_dataloader_generator(
         True,
         config.dataloader_config,
+        rng_tuple,
     )
 
     def fed_eval_fn(
@@ -187,7 +215,7 @@ def get_fed_eval_fn(
         Optional[Tuple[float, Dict]]
             The loss and the accuracy of the input model on the given data.
         """
-        net = net_generator(config.net_config)
+        net = net_generator(config.net_config, rng_tuple)
         generic_set_parameters(net, parameters)
         config.run_config["device"] = obtain_device()
 
@@ -199,6 +227,7 @@ def get_fed_eval_fn(
             testloader,
             config.run_config,
             working_dir,
+            rng_tuple,
         )
         return loss, metrics
 
@@ -213,6 +242,9 @@ def get_on_fit_config_fn(fit_config: dict) -> OnFitConfigFN:
     fit_config : Dict
         The configuration for the fit function.
         Loaded dynamically from the config file.
+    rng_tuple : IsolatedRNGTuple
+        The random number generator state for the training.
+        Use if you need seeded random behavior
 
     Returns
     -------
@@ -237,8 +269,7 @@ def get_on_fit_config_fn(fit_config: dict) -> OnFitConfigFN:
             The configuration for the fit function.
             Loaded dynamically from the config file.
         """
-        # resolve and convert to python dict
-        fit_config["extra"]["curr_round"] = server_round  # add round info
+        fit_config["extra"]["server_round"] = server_round
         return fit_config
 
     return fit_config_fn

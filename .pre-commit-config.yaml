@@ -10,20 +10,14 @@ exclude: |
                 run_scripts/|
                 .pre-commit-config.yaml
   )$
-  
+
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.8
+    rev: v0.1.12
     hooks:
-        - id: ruff
-          types_or: [python, pyi, jupyter]
-          args: [ --fix, --preview]
-  - repo: https://github.com/PyCQA/docformatter
-    rev: v1.7.5
-    hooks:
-      - id: docformatter
-        additional_dependencies: [tomli]
-        args: [--in-place, --config, ./pyproject.toml]
+      - id: ruff
+        types_or: [python, pyi, jupyter]
+        args: [--fix, --preview, --extend-ignore=PLR0917,--extend-ignore=PLR0914]
   - repo: https://github.com/lyz-code/yamlfix/
     rev: 1.16.0
     hooks:
@@ -43,7 +37,7 @@ repos:
         types: [file, python]
         stages: [pre-push, manual]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0  # Use the ref you want to point at
+    rev: v4.5.0 # Use the ref you want to point at
     hooks:
       - id: check-added-large-files
       - id: check-ast
@@ -57,8 +51,8 @@ ci:
 
     for more information, see https://pre-commit.ci
   autofix_prs: true
-  autoupdate_branch: ''
-  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_branch: ""
+  autoupdate_commit_msg: "[pre-commit.ci] pre-commit autoupdate"
   autoupdate_schedule: weekly
   skip: [mypy]
   submodules: false
