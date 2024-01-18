@@ -159,3 +159,25 @@ To enable Continous Integration of your project via Pre-commit, all you need to 
 ## Long-term Public Projects
 
 If you intend your project to run over multiple years and it does not require a private repository, prefer forking this codebase and creating your project as a branch. This will allow you to keep up to date with the latest changes to the template by syncing the main branch and merging it into your private branch.
+
+# How to use the template for open-source research
+
+This section aims to teach you how to have research projects containing both public and private components such that previously private work can be effortlessly open-sourced after publication.
+
+1. Fork the code template into your own private GitHub, do not click “Use as template” as that would disallow you from adding PRs to the original repo.
+2. Create a private repository mirroring the code template, following [this](https://stackoverflow.com/questions/10065526/github-how-to-make-a-fork-of-public-repository-private) advice 
+    1. Create a new private repository using the GitHub UI, called something like `private-fl-projects`
+    2. Clone the public template
+        1. `git clone --bare git@github.com:camlsys/fl-project-template.git`
+        2. `cd fl-project-template.git`
+        3. `git push --mirror git@github.com:your-name/private-fl-projects.git`
+        4. `cd ..`
+        5. `rm -rf fl-project-template.git`
+    3. After you have done these steps, you never have to touch the public fork directly, all you need to do is:
+        1. Go to the `private-fl-projects` repo
+        2. `git remote add public git@github.com:your-name/fl-project-template.git`
+        3. Now any push you do by default will go to origin (i.e the private repo) otherwise, if you want to pull/push from/to the public one you can do:
+            1. `git pull public main`
+            2. `git push public main`
+3. You can then PR from the public fork to the original repo and bring any contributions you wish
+4. You can also officially publish your code by pushing a private branch to your public fork, this branch does not have to be synced to the template but may be of use if the conference requires an artefact for reproducibility
