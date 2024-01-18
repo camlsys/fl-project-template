@@ -147,7 +147,7 @@ class Client(fl.client.NumPyClient):
         )
 
         return (
-            generic_get_parameters(self.net),
+            self.get_parameters({}),
             num_samples,
             metrics,
         )
