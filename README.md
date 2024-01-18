@@ -116,7 +116,7 @@ You has now implemented an entirely new FL task without touching any of the FL-s
 This section aims to teach you how to have research projects containing both public and private components such that previously private work can be effortlessly open-sourced after publication.
 
 1. Fork the code template into your own private GitHub; do not click “Use as template” as that would disallow you from adding PRs to the original repo.
-2. Create a private repository mirroring the code template, following [this](https://stackoverflow.com/questions/10065526/github-how-to-make-a-fork-of-public-repository-private) advice 
+2. Create a private repository [mirroring](https://docs.github.com/en/repositories/creating-and-managing-repositories/duplicating-a-repository) the code template
     1. Create a new private repository using the GitHub UI, called something like `private-fl-projects`
     2. Clone the public template
         1. `git clone --bare git@github.com:camlsys/fl-project-template.git`
