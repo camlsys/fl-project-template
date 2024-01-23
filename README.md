@@ -6,7 +6,7 @@
 
 > :warning: This ``README`` describes how to use the template as-is after installing it with the default `setup.sh` script in a machine running Ubuntu `22.04`. Please follow the instructions in `EXTENDED_README.md` for details on more complex environment setups and how to extend this template.
 
-## About this Template
+## About this template
 
 Federated Learning (FL) is a privacy-preserving machine learning paradigm that allows training models directly on local client data using local client resources. This template standardizes the FL research workflow at the [Cambridge ML Systems](https://mlsys.cst.cam.ac.uk/) based on three frameworks chosen for their flexibility and ease of use:
  - [Flower](https://github.com/adap/flower): The FL framework developed by [Flower Labs](https://flower.dev/) with contributions from [CaMLSys](https://mlsys.cst.cam.ac.uk/) members. 
@@ -26,7 +26,7 @@ While these tools can be combined in an ad-hoc manner, this template intends to 
 - Automatically handles logging, saving, and checkpointing, which integrate natively and seamlessly with Wandb and Hydra. This enables sequential re-launches of the same job on clusters using time-limited schedulers.
 - Provides deterministic seeded client selection while taking into account the current checkpoint. 
 - Provides a static means of selecting which ML task to run using Hydra's config system without the drawbacks of the untyped mechanism provided by Hydra.
-- Enforces good coding standards by default using isort, black, docformatter, ruff and mypy integrated with [pre-commit](https://pre-commit.com/). [Pydantic](https://docs.pydantic.dev/latest/) is also used to validate configuration data for generating models, creating dataloaders, training clients, etc.
+- By default, it enforces good coding standards by using isort, black, docformatter, ruff, and mypy integrated with [pre-commit](https://pre-commit.com/). [Pydantic](https://docs.pydantic.dev/latest/) is also used to validate configuration data for generating models, creating dataloaders, training clients, etc.
 
 ### What this template does not do:
 - Provide off-the-shelf implementations of FL algorithms, ML tasks, datasets, or models beyond the MNIST example. For such functionality, please refer to the original [Flower](https://github.com/adap/flower) and [PyTorch](https://github.com/pytorch/pytorch).
@@ -72,8 +72,8 @@ The default task should have created a folder in fl-project-template/outputs. Th
 poetry run python -m project.main --config-name=base use_wandb=true
 ```
 
-Now you  can run the MNIST example by following these instructions:
-- Specify a ``dataset_dir`` and ``partition_dir`` in ``conf/dataset/mnist.yaml`` together with the ``num_clients``, the size of a clients validation set ``val_ratio``, a ``seed`` for partitioning. Additionally, you can also specify if the partition labels should be ``iid``, follow a ``power_law`` distribution or if the partition should ``balance`` the labels across clients. 
+Now, you  can run the MNIST example by following these instructions:
+- Specify a ``dataset_dir`` and ``partition_dir`` in ``conf/dataset/mnist.yaml`` together with the ``num_clients``, the size of a clients validation set ``val_ratio``, a ``seed`` for partitioning. You can also specify if the partition labels should be ``iid``, follow a ``power_law`` distribution or if the partition should ``balance`` the labels across clients. 
 - Download and partition the dataset by running the following command from the root dir: 
     - ```bash 
          poetry run python -m project.task.mnist_classification.dataset_preparation
@@ -109,7 +109,29 @@ After implementing the task, dynamically starting it via ```hydra``` requires ch
     - ```dispatch_config``` selects the configs used during fit and eval, you will likely not have to change this as the default task provides a sensible version.
 - The ```project.dispatch``` module requires you to add the task-specific ```dispatch_data```, ```dispatch_train``` and ```dispatch_config``` functions from the ```project.<new_task>.dispatch``` module to the list of possible tasks that can match the config. The statically-declared function order determines which task is selected if multiple ones match the config.
 
-Yu have now implemented an entire new FL task without having to touch any of the FL-specific code.
+You has now implemented an entirely new FL task without touching any of the FL-specific code.
+
+# How to use the template for open-source research
+
+This section aims to teach you how to have research projects containing both public and private components such that previously private work can be effortlessly open-sourced after publication.
+
+1. Fork the code template into your own private GitHub; do not click “Use as template” as that would disallow you from adding PRs to the original repo.
+2. Create a private repository [mirroring](https://docs.github.com/en/repositories/creating-and-managing-repositories/duplicating-a-repository) the code template
+    1. Create a new private repository using the GitHub UI, called something like `private-fl-projects`
+    2. Clone the public template
+        1. `git clone --bare git@github.com:camlsys/fl-project-template.git`
+        2. `cd fl-project-template.git`
+        3. `git push --mirror git@github.com:your-name/private-fl-projects.git`
+        4. `cd ..`
+        5. `rm -rf fl-project-template.git`
+    3. After you have done these steps, you never have to touch the public fork directly, all you need to do is:
+        1. Go to the `private-fl-projects` repo
+        2. `git remote add public git@github.com:your-name/fl-project-template.git`
+        3. Now, any push you do by default will go to the origin (i.e, the private repo) otherwise if you want to pull/push from/to the public one, you can do:
+            1. `git pull public main`
+            2. `git push public main`
+3. You can then PR from the public fork to the original repo and bring any contributions you wish
+4. You can also officially publish your code by pushing a private branch to your public fork; this branch does not have to be synced to the template but may be of use if the conference requires an artefact for reproducibility
 
 ## Using checkpoints
 
@@ -120,7 +142,7 @@ To use the checkpoint system all you have to do is to specify the `hydra.run.dir
 ## Reproducibility  
 One of the primary functionalities of this template is to allow for easily reproducible FL checkpointing. It achieves this by controlling the client sampling, server `RNG`, and client `RNG` seeding and saving the rng states for `Random`, `np`, and `torch`. The server and every client are provided with an isolated RNG generator making them usable in a multithreaded context where the global generators may get accessed unpredictably. 
 
-The `RNG` states of all of the relevant packages and generators are automatically saved and synchronized to the round allowing for reproducible client sample and client execution at the same round. Every relevant piece of client functionality also receives the isolated `RNG` state and can use it to guarantee reproducibility (e.g., the `PyTorch`` dataloader).
+The `RNG` states of all of the relevant packages and generators are automatically saved and synchronized to the round, allowing for reproducible client samples and client execution in the same round. Every relevant piece of client functionality also receives the isolated `RNG` state and can be used to guarantee reproducibility (e.g., the `PyTorch`` dataloader).
 
 ## Template Structure
 
@@ -137,7 +159,7 @@ project
 ├── types
 └── utils
 ```
-The the main packages of concern are:
+The main packages of concern are:
 - ``client``: Contains the client class, requires no changes
 - ``conf``: This contains the Hydra configuration files specifying experiment behavior and the chosen ML task. 
 - ``dispatch``: handles mapping a Hydra configuration to the ML task. 
@@ -156,6 +178,4 @@ Two tasks are already implemented:
 
 To enable Continous Integration of your project via Pre-commit, all you need to do is allow pre-commit for a given repo from the [github marketplace](https://github.com/marketplace/pre-commit-ci/plan/MDIyOk1hcmtldHBsYWNlTGlzdGluZ1BsYW42MTI2#plan-6126). You should be aware that this is free only for public open-source repositories. 
 
-## Long-term Public Projects
 
-If you intend your project to run over multiple years and it does not require a private repository, prefer forking this codebase and creating your project as a branch. This will allow you to keep up to date with the latest changes to the template by syncing the main branch and merging it into your private branch.
