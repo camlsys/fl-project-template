@@ -150,6 +150,10 @@ DataStructure = tuple[
 ConfigStructure = tuple[OnFitConfigFN, OnEvaluateConfigFN]
 
 
+class IntentionalDropoutError(Exception):
+    """Exception raised when a client intentionally drops out."""
+
+
 class Folders(enum.StrEnum):
     """Enum for folder types."""
 
