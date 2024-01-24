@@ -34,7 +34,9 @@ While these tools can be combined in an ad-hoc manner, this template intends to 
 
 ## Setup
 
-The basic setup has been simplified to one setup.sh script using [poetry](https://python-poetry.org/), [pyenv](https://github.com/pyenv/pyenv) and [pre-commit](https://pre-commit.com/). It only requires limited user input regarding the installation location of ``pyenv`` and ``poetry``, and will install the specified python version. All dependencies are placed in the local ``.venv`` directory. 
+For systems running UBUNTU with CUDA 12, the basic setup has been simplified to one `setup.sh` script using [poetry](https://python-poetry.org/), [pyenv](https://github.com/pyenv/pyenv) and [pre-commit](https://pre-commit.com/). It only requires limited user input regarding the installation location of ``pyenv`` and ``poetry``, and will install the specified python version. All dependencies are placed in the local ``.venv`` directory. 
+
+If you have a different system, you will need to modify `pyproject.toml` to include a link to the appropriate torch wheel and to replicate the operations of `setup.sh` for your system using the appropriate operations.
 
 
 By default, pre-commit only runs hooks on files staged for commit. If you wish to run all the pre-commit hooks without committing or pushing, use:
