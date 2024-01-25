@@ -192,7 +192,6 @@ def test(
             _, predicted = torch.max(outputs.data, 1)
             correct += (predicted == labels).sum().item()
 
-    per_sample_loss /= len(cast(Sized, testloader.dataset))
     return (
         per_sample_loss / len(cast(Sized, testloader.dataset)),
         len(cast(Sized, testloader.dataset)),
