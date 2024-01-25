@@ -1,7 +1,7 @@
 #!/bin/bash
 USER_NAME=$(echo $USER)
-VPOETRY_HOME="/nfs-share/$USER_NAME/.poetry"
-VPYENV_ROOT="/nfs-share/$USER_NAME/.pyenv"
+VPOETRY_HOME=""
+VPYENV_ROOT=""
 VPYTHON_VERSION="3.11.6"
 
 if ! [ -x "$(command -v pyenv)" ]; then
