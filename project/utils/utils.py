@@ -382,9 +382,7 @@ def restore_files(
     if not top_level:
         working_dir = working_dir / output_dir.name
 
-    log(logging.INFO, f"Dirs: {output_dir}, {working_dir}")
     children: list[Path] = []
-
     for file in output_dir.iterdir():
         file_cnt += 1
         if file.is_file():
