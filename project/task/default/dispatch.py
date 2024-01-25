@@ -21,7 +21,11 @@ from typing import cast
 
 from omegaconf import DictConfig, OmegaConf
 
-from project.task.default.dataset import get_client_dataloader, get_fed_dataloader
+from project.task.default.dataset import (
+    get_client_dataloader,
+    get_fed_dataloader,
+    init_working_dir,
+)
 from project.task.default.models import get_net
 from project.task.default.train_test import (
     get_fed_eval_fn,
@@ -104,6 +108,7 @@ def dispatch_data(cfg: DictConfig) -> DataStructure | None:
             get_net,
             get_client_dataloader,
             get_fed_dataloader,
+            init_working_dir,
         )
 
     # Cannot match, send to next dispatch in chain

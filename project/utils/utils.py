@@ -8,7 +8,7 @@ import logging
 import re
 import shutil
 from collections.abc import Callable, Iterator
-from itertools import chain
+from itertools import chain, islice
 from pathlib import Path
 from types import TracebackType
 from typing import Any, cast
@@ -22,7 +22,7 @@ import wandb
 from wandb.sdk.wandb_run import Run
 from wandb.sdk.lib.disabled import RunDisabled
 
-from project.types.common import Ext, Folders, IsolatedRNG
+from project.types.common import Ext, FileCountExceededError, Folders, IsolatedRNG
 
 
 def obtain_device() -> torch.device:
@@ -254,7 +254,7 @@ def cleanup(working_dir: Path, to_clean: list[str]) -> None:
 
 def get_highest_round(
     parameters_dir: Path,
-    file_limit: int | None,
+    file_limit: int,
 ) -> int:
     """Get the index of the highest round.
 
@@ -262,7 +262,7 @@ def get_highest_round(
     ----------
     output_dir : Path
         The output directory.
-    file_limit : Optional[int]
+    file_limit : int
         The maximal number of files to search.
         If None, then there is no limit.
 
@@ -273,16 +273,13 @@ def get_highest_round(
     """
     same_name_files = cast(
         Iterator[Path],
-        chain(
-            parameters_dir.glob(f"*{Files.PARAMETERS}_*"),
-            parameters_dir.glob(f"*/*{Files.PARAMETERS}_*"),
+        islice(
+            chain(
+                parameters_dir.glob(f"*{Files.PARAMETERS}_*"),
+                parameters_dir.glob(f"*/*{Files.PARAMETERS}_*"),
+            ),
+            file_limit,
         ),
-    )
-
-    same_name_files = (
-        same_name_files
-        if file_limit is None
-        else (next(same_name_files) for _ in range(file_limit))
     )
 
     indicies = (
@@ -298,7 +295,9 @@ def save_files(
     output_dir: Path,
     to_save: list[str],
     server_round: int,
+    file_limit: int,
     top_level: bool = True,
+    file_cnt: int = 0,
 ) -> None:
     """Save the files in the working dir.
 
@@ -353,6 +352,75 @@ def save_files(
             to_save=to_save,
             top_level=False,
             server_round=server_round,
+            file_limit=file_limit,
+            file_cnt=file_cnt,
+        )
+
+
+def restore_files(
+    working_dir: Path,
+    output_dir: Path,
+    to_restore: list[str],
+    server_round: int,
+    file_limit: int,
+    top_level: bool = True,
+    file_cnt: int = 0,
+) -> None:
+    """Save the files in the working dir.
+
+    Parameters
+    ----------
+    working_dir : Path
+        The working directory.
+    output_dir : Path
+        The output directory.
+
+    Returns
+    -------
+        None
+    """
+    if not top_level:
+        working_dir = working_dir / output_dir.name
+
+    log(logging.INFO, f"Dirs: {output_dir}, {working_dir}")
+    children: list[Path] = []
+
+    for file in output_dir.iterdir():
+        file_cnt += 1
+        if file.is_file():
+            if f"_{server_round}" in file.name:
+                for restore_token in to_restore:
+                    if restore_token in file.name:
+                        destination_file = (
+                            working_dir
+                            / file.with_stem(
+                                f"{file.stem.replace(f'_{server_round}', '')}",
+                            ).name
+                        )
+
+                        destination_file.parent.mkdir(
+                            parents=True,
+                            exist_ok=True,
+                        )
+                        shutil.copy(file, destination_file)
+                        break
+        else:
+            children.append(file)
+        if file_cnt >= file_limit:
+            raise FileCountExceededError(
+                f"""You have exceeded the {file_limit} file limit,
+                you may increase it in the config if you are sure about it."""
+            )
+
+    for child in children:
+        restore_files(
+            working_dir,
+            child,
+            to_restore=to_restore,
+            top_level=False,
+            server_round=server_round,
+            file_limit=file_limit,
+            file_cnt=file_cnt,
         )
 
 
@@ -362,13 +430,14 @@ class FileSystemManager:
     def __init__(
         self,
         working_dir: Path,
-        output_dir: Path,
+        results_dir: Path,
         load_parameters_from: Path | None,
+        to_restore: list[str],
         to_clean_once: list[str],
         to_save_once: list[str],
         original_hydra_dir: Path,
+        file_limit: int,
         starting_round: int | None,
-        file_limit: int | None = None,
     ) -> None:
         """Initialize the context manager.
 
@@ -376,7 +445,7 @@ class FileSystemManager:
         ----------
         working_dir : Path
             The working directory.
-        output_dir : Path
+        results_dir : Path
             The output directory.
         to_clean_once : List[str]
             The tokens to clean once.
@@ -395,18 +464,22 @@ class FileSystemManager:
         """
         self.to_clean_once = to_clean_once
         self.working_dir = working_dir
-        self.output_dir = output_dir
+        self.results_dir = results_dir
         self.to_save_once = to_save_once
+        self.to_restore = to_restore
+
         self.original_hydra_dir = original_hydra_dir
 
         highest_round = get_highest_round(
             parameters_dir=(
                 load_parameters_from
                 if load_parameters_from is not None
-                else output_dir / Folders.STATE / Folders.PARAMETERS
+                else results_dir / Folders.STATE / Folders.PARAMETERS
             ),
             file_limit=file_limit,
         )
+        self.file_limit = file_limit
+
         self.server_round = (
             min(
                 highest_round,
@@ -441,9 +514,10 @@ class FileSystemManager:
             if cur_round % save_frequency == 0:
                 save_files(
                     self.working_dir,
-                    self.output_dir,
+                    self.results_dir,
                     to_save=to_save,
                     server_round=cur_round,
+                    file_limit=self.file_limit,
                 )
 
         return save_files_round
@@ -455,6 +529,13 @@ class FileSystemManager:
             f"Pre-cleaning {self.to_clean_once}",
         )
         cleanup(self.working_dir, self.to_clean_once)
+        restore_files(
+            self.working_dir,
+            self.results_dir,
+            self.to_restore,
+            server_round=self.server_round,
+            file_limit=self.file_limit,
+        )
         return self
 
     def __exit__(
@@ -485,9 +566,10 @@ class FileSystemManager:
         )
         save_files(
             self.working_dir,
-            self.output_dir,
+            self.results_dir,
             to_save=self.to_save_once,
             server_round=self.server_round,
+            file_limit=self.file_limit,
         )
         log(
             logging.INFO,

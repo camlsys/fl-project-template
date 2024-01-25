@@ -24,7 +24,10 @@ from pathlib import Path
 
 from omegaconf import DictConfig
 
-from project.task.default.dispatch import dispatch_config as dispatch_default_config
+from project.task.default.dispatch import (
+    dispatch_config as dispatch_default_config,
+    init_working_dir as init_working_dir_default,
+)
 from project.task.mnist_classification.dataset import get_dataloader_generators
 from project.task.mnist_classification.models import get_logistic_regression, get_net
 from project.task.mnist_classification.train_test import get_fed_eval_fn, test, train
@@ -124,12 +127,14 @@ def dispatch_data(cfg: DictConfig) -> DataStructure | None:
                 get_net,
                 client_dataloader_gen,
                 fed_dataloader_gen,
+                init_working_dir_default,
             )
         elif client_model_and_data.upper() == "MNIST_LR":
             return (
                 get_logistic_regression,
                 client_dataloader_gen,
                 fed_dataloader_gen,
+                init_working_dir_default,
             )
 
     # Cannot match, send to next dispatch in chain
