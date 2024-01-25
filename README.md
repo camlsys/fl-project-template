@@ -121,9 +121,9 @@ This section aims to teach you how to have research projects containing both pub
 2. Create a private repository [mirroring](https://docs.github.com/en/repositories/creating-and-managing-repositories/duplicating-a-repository) the code template
     1. Create a new private repository using the GitHub UI, called something like `private-fl-projects`
     2. Clone the public template
-        1. `git clone --bare git@github.com:camlsys/fl-project-template.git`
+        1. `git clone --bare https://github.com/camlsys/fl-project-template.git`
         2. `cd fl-project-template.git`
-        3. `git push --mirror git@github.com:your-name/private-fl-projects.git`
+        3. `git push --mirror https://github.com/camlsys/private-fl-project.git`
         4. `cd ..`
         5. `rm -rf fl-project-template.git`
     3. After you have done these steps, you never have to touch the public fork directly, all you need to do is:
