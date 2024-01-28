@@ -117,6 +117,20 @@ TestFunc = Callable[
 FitRes = tuple[NDArrays, int, dict]
 EvalRes = tuple[float, int, dict]
 
+
+# A function to initialize the working directory
+# in case your training relies on a specific
+# directory structure pre-existing
+InitWorkingDir = Callable[
+    [
+        # The working dir path
+        Path,
+        # The results dir path
+        Path,
+    ],
+    None,
+]
+
 # A federated evaluation function
 # used by the server to test the model between rounds
 # requires the round number, the model parameters
@@ -146,11 +160,16 @@ DataStructure = tuple[
     NetGen,
     ClientDataloaderGen,
     FedDataloaderGen,
+    InitWorkingDir,
 ]
 ConfigStructure = tuple[OnFitConfigFN, OnEvaluateConfigFN]
 
 
 class IntentionalDropoutError(Exception):
+    """Exception raised when a client intentionally drops out."""
+
+
+class FileCountExceededError(Exception):
     """Exception raised when a client intentionally drops out."""
 
 

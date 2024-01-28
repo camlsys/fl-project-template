@@ -11,6 +11,7 @@ You can use all those functions from functions/methods defined here of course.
 """
 
 from collections import defaultdict
+from pathlib import Path
 
 import torch
 from pydantic import BaseModel
@@ -163,3 +164,22 @@ def get_fed_dataloader(
         shuffle=not test,
         drop_last=True,
     )
+
+
+def init_working_dir(
+    working_dir: Path,
+    results_dir: Path,
+) -> None:
+    """Initialize the working directory.
+
+    Parameters
+    ----------
+    working_dir : Path
+        The path to the working directory.
+    results_dir : Path
+        The path to the results directory.
+
+    Returns
+    -------
+    None
+    """

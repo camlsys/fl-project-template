@@ -128,13 +128,14 @@ def main(cfg: DictConfig) -> None:
         with (
             FileSystemManager(
                 working_dir=working_dir,
-                output_dir=results_dir,
+                results_dir=results_dir,
                 load_parameters_from=cfg.fed.parameters_folder,
                 to_clean_once=cfg.to_clean_once,
                 to_save_once=cfg.to_save_once,
+                to_restore=cfg.to_restore,
                 original_hydra_dir=original_hydra_dir,
                 starting_round=cfg.fed.server_round,
-                file_limit=cfg.file_limit,
+                file_limit=int(cfg.file_limit),
             ) as fs_manager,
             RayContextManager() as _ray_manager,
         ):
@@ -144,9 +145,13 @@ def main(cfg: DictConfig) -> None:
                 net_generator,
                 client_dataloader_gen,
                 fed_dataloader_gen,
+                init_working_dir,
             ) = dispatch_data(
                 cfg,
             )
+            # The folder starts either empty or only with restored files
+            # as specified in the config
+            init_working_dir(working_dir, results_dir)
 
             # Parameters/rng/history state for the strategy
             # Uses the path to the saved initial parameters and state
@@ -318,7 +323,7 @@ def main(cfg: DictConfig) -> None:
             fl.simulation.start_simulation(
                 # NOTE: mypy complains about the type of client_generator
                 # We must wait for reconciliation from Flower
-                client_fn=client_generator,  # type: ignore[arg-type]
+                client_fn=lambda cid: client_generator(cid).to_client(),
                 num_clients=cfg.fed.num_total_clients,
                 client_resources={
                     "num_cpus": (

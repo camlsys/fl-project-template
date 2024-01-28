@@ -28,7 +28,13 @@ to_save_per_round: [parameters, rng, history]
 # The frequency with which they should be saved
 save_frequency: 1
 
-# List of flie patterns to be deleted
+# List of files to be copied over to the working dir
+# from the results dir when using checkpoints
+# all the crucial components (rng, parameters, history)
+# are handled separately
+to_restore: []
+
+# List of file patterns to be deleted
 # prior to and at the end of training from working_dir
 to_clean_once: [history, parameters, yaml, log, rng, history]
 
@@ -72,4 +78,4 @@ ray_node_ip_address: null
 # checks at most file_limit files up to depth 2
 # from the results directory
 # if null checks all files 
-file_limit: null
+file_limit: 250
