@@ -88,7 +88,7 @@ Now, you  can run the MNIST example by following these instructions:
 
 Once a complete experiment has run, you can continue it for a specified number of epochs by running the following command from the root dir to change the output directory to the previous one. 
 - ```bash 
-    poetry run python -m project.main --config-name=mnist reuse_output_dir=<path_to_your_output_directory>
+    poetry run python -m project.main --config-name=mnist hydra.run.dir=<path_to_your_output_directory>
     ```
 These are all the basic steps required to run a simple experiment. 
 
