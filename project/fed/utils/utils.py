@@ -545,7 +545,7 @@ def get_isolated_rng_from_state(
     np_rng.__setstate__(np_rng_state)
     torch_rng_cpu = torch.Generator().set_state(torch_rng_cpu_state)
     torch_rng_gpu = (
-        torch.Generator().set_state(torch_rng_gpu_state)
+        torch.Generator(device=obtain_device()).set_state(torch_rng_gpu_state)
         if torch_rng_gpu_state is not None
         else None
     )
