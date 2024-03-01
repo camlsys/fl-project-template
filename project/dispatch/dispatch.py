@@ -5,6 +5,7 @@ config without losing static type checking.
 """
 
 from collections.abc import Callable
+from typing import Any
 
 from omegaconf import DictConfig
 
@@ -23,7 +24,7 @@ from project.task.mnist_classification.dispatch import (
 from project.types.common import ConfigStructure, DataStructure, TrainStructure
 
 
-def dispatch_train(cfg: DictConfig) -> TrainStructure:
+def dispatch_train(cfg: DictConfig, **kwargs: dict[str, Any]) -> TrainStructure:
     """Dispatch the train/test and fed test functions based on the config file.
 
     Functionality should be added to the dispatch.py file in the task folder.
@@ -35,6 +36,8 @@ def dispatch_train(cfg: DictConfig) -> TrainStructure:
     cfg : DictConfig
         The configuration for the train function.
         Loaded dynamically from the config file.
+    kwargs : dict[str, Any]
+        Additional keyword arguments to pass to the train function.
 
     Returns
     -------
@@ -42,14 +45,14 @@ def dispatch_train(cfg: DictConfig) -> TrainStructure:
         The train function, test function and the get_fed_eval_fn function.
     """
     # Create the list of task dispatches to try
-    task_train_functions: list[Callable[[DictConfig], TrainStructure | None]] = [
+    task_train_functions: list[Callable[..., TrainStructure | None]] = [
         dispatch_default_train,
         dispatch_mnist_train,
     ]
 
     # Match the first function which does not return None
     for task in task_train_functions:
-        result = task(cfg)
+        result = task(cfg, **kwargs)
         if result is not None:
             return result
 
@@ -58,7 +61,7 @@ def dispatch_train(cfg: DictConfig) -> TrainStructure:
     )
 
 
-def dispatch_data(cfg: DictConfig) -> DataStructure:
+def dispatch_data(cfg: DictConfig, **kwargs: dict[str, Any]) -> DataStructure:
     """Dispatch the net generator and dataloader client/fed generator functions.
 
     Functionality should be added to the dispatch.py file in the task folder.
@@ -70,6 +73,8 @@ def dispatch_data(cfg: DictConfig) -> DataStructure:
     cfg : DictConfig
         The configuration for the data function.
         Loaded dynamically from the config file.
+    kwargs : dict[str, Any]
+        Additional keyword arguments to pass to the data function.
 
     Returns
     -------
@@ -77,16 +82,14 @@ def dispatch_data(cfg: DictConfig) -> DataStructure:
         The net generator and dataloader generator functions.
     """
     # Create the list of task dispatches to try
-    task_data_dependent_functions: list[
-        Callable[[DictConfig], DataStructure | None]
-    ] = [
+    task_data_dependent_functions: list[Callable[..., DataStructure | None]] = [
         dispatch_mnist_data,
         dispatch_default_data,
     ]
 
     # Match the first function which does not return None
     for task in task_data_dependent_functions:
-        result = task(cfg)
+        result = task(cfg, **kwargs)
         if result is not None:
             return result
 
@@ -95,7 +98,7 @@ def dispatch_data(cfg: DictConfig) -> DataStructure:
     )
 
 
-def dispatch_config(cfg: DictConfig) -> ConfigStructure:
+def dispatch_config(cfg: DictConfig, **kwargs: dict[str, Any]) -> ConfigStructure:
     """Dispatch the fit/eval config functions based on on the hydra config.
 
     Functionality should be added to the dispatch.py
@@ -109,6 +112,8 @@ def dispatch_config(cfg: DictConfig) -> ConfigStructure:
     cfg : DictConfig
         The configuration for the config function.
         Loaded dynamically from the config file.
+    kwargs : dict[str, Any]
+        Additional keyword arguments to pass to the config function.
 
     Returns
     -------
@@ -116,14 +121,14 @@ def dispatch_config(cfg: DictConfig) -> ConfigStructure:
         The config functions.
     """
     # Create the list of task dispatches to try
-    task_config_functions: list[Callable[[DictConfig], ConfigStructure | None]] = [
+    task_config_functions: list[Callable[..., ConfigStructure | None]] = [
         dispatch_mnist_config,
         dispatch_default_config,
     ]
 
     # Match the first function which does not return None
     for task in task_config_functions:
-        result = task(cfg)
+        result = task(cfg, **kwargs)
         if result is not None:
             return result
 

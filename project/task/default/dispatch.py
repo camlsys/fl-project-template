@@ -17,7 +17,7 @@ return None and the dispatch of the next task
 in the chain specified by project.dispatch will be used.
 """
 
-from typing import cast
+from typing import Any, cast
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -39,6 +39,7 @@ from project.types.common import ConfigStructure, DataStructure, TrainStructure
 
 def dispatch_train(
     cfg: DictConfig,
+    **kwargs: dict[str, Any],
 ) -> TrainStructure | None:
     """Dispatch the train/test and fed test functions based on the config file.
 
@@ -53,6 +54,8 @@ def dispatch_train(
     cfg : DictConfig
         The configuration for the train function.
         Loaded dynamically from the config file.
+    kwargs : dict[str, Any]
+        Additional keyword arguments to pass to the train function.
 
     Returns
     -------
@@ -74,7 +77,7 @@ def dispatch_train(
     return None
 
 
-def dispatch_data(cfg: DictConfig) -> DataStructure | None:
+def dispatch_data(cfg: DictConfig, **kwargs: dict[str, Any]) -> DataStructure | None:
     """Dispatch the net and dataloader client/fed generator functions.
 
     Do not throw any errors based on not finding
@@ -88,6 +91,8 @@ def dispatch_data(cfg: DictConfig) -> DataStructure | None:
     cfg : DictConfig
         The configuration for the data functions.
         Loaded dynamically from the config file.
+    kwargs : dict[str, Any]
+        Additional keyword arguments to pass to the data functions.
 
     Returns
     -------
@@ -117,6 +122,7 @@ def dispatch_data(cfg: DictConfig) -> DataStructure | None:
 
 def dispatch_config(
     cfg: DictConfig,
+    **kwargs: dict[str, Any],
 ) -> ConfigStructure | None:
     """Dispatches the config function based on the config_structure in the config file.
 
@@ -136,6 +142,8 @@ def dispatch_config(
     cfg : DictConfig
         The configuration for the config function.
         Loaded dynamically from the config file.
+    kwargs : dict[str, Any]
+        Additional keyword arguments to pass to the config function.
 
     Returns
     -------
