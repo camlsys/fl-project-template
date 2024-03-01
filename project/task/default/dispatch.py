@@ -39,7 +39,7 @@ from project.types.common import ConfigStructure, DataStructure, TrainStructure
 
 def dispatch_train(
     cfg: DictConfig,
-    **kwargs: dict[str, Any],
+    **kwargs: Any,
 ) -> TrainStructure | None:
     """Dispatch the train/test and fed test functions based on the config file.
 
@@ -77,7 +77,7 @@ def dispatch_train(
     return None
 
 
-def dispatch_data(cfg: DictConfig, **kwargs: dict[str, Any]) -> DataStructure | None:
+def dispatch_data(cfg: DictConfig, **kwargs: Any) -> DataStructure | None:
     """Dispatch the net and dataloader client/fed generator functions.
 
     Do not throw any errors based on not finding
@@ -122,7 +122,7 @@ def dispatch_data(cfg: DictConfig, **kwargs: dict[str, Any]) -> DataStructure | 
 
 def dispatch_config(
     cfg: DictConfig,
-    **kwargs: dict[str, Any],
+    **kwargs: Any,
 ) -> ConfigStructure | None:
     """Dispatches the config function based on the config_structure in the config file.
 
