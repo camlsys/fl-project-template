@@ -24,7 +24,7 @@ from project.task.mnist_classification.dispatch import (
 from project.types.common import ConfigStructure, DataStructure, TrainStructure
 
 
-def dispatch_train(cfg: DictConfig, **kwargs: dict[str, Any]) -> TrainStructure:
+def dispatch_train(cfg: DictConfig, **kwargs: Any) -> TrainStructure:
     """Dispatch the train/test and fed test functions based on the config file.
 
     Functionality should be added to the dispatch.py file in the task folder.
@@ -61,7 +61,7 @@ def dispatch_train(cfg: DictConfig, **kwargs: dict[str, Any]) -> TrainStructure:
     )
 
 
-def dispatch_data(cfg: DictConfig, **kwargs: dict[str, Any]) -> DataStructure:
+def dispatch_data(cfg: DictConfig, **kwargs: Any) -> DataStructure:
     """Dispatch the net generator and dataloader client/fed generator functions.
 
     Functionality should be added to the dispatch.py file in the task folder.
@@ -98,7 +98,7 @@ def dispatch_data(cfg: DictConfig, **kwargs: dict[str, Any]) -> DataStructure:
     )
 
 
-def dispatch_config(cfg: DictConfig, **kwargs: dict[str, Any]) -> ConfigStructure:
+def dispatch_config(cfg: DictConfig, **kwargs: Any) -> ConfigStructure:
     """Dispatch the fit/eval config functions based on on the hydra config.
 
     Functionality should be added to the dispatch.py

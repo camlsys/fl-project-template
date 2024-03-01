@@ -37,7 +37,7 @@ from project.types.common import DataStructure, TrainStructure
 
 def dispatch_train(
     cfg: DictConfig,
-    **kwargs: dict[str, Any],
+    **kwargs: Any,
 ) -> TrainStructure | None:
     """Dispatch the train/test and fed test functions based on the config file.
 
@@ -76,7 +76,7 @@ def dispatch_train(
     return None
 
 
-def dispatch_data(cfg: DictConfig, **kwargs: dict[str, Any]) -> DataStructure | None:
+def dispatch_data(cfg: DictConfig, **kwargs: Any) -> DataStructure | None:
     """Dispatch the train/test and fed test functions based on the config file.
 
     Do not throw any errors based on not finding a given attribute
