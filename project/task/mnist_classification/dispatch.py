@@ -21,6 +21,7 @@ in the chain specified by project.dispatch will be used.
 """
 
 from pathlib import Path
+from typing import Any
 
 from omegaconf import DictConfig
 
@@ -36,6 +37,7 @@ from project.types.common import DataStructure, TrainStructure
 
 def dispatch_train(
     cfg: DictConfig,
+    **kwargs: dict[str, Any],
 ) -> TrainStructure | None:
     """Dispatch the train/test and fed test functions based on the config file.
 
@@ -51,6 +53,8 @@ def dispatch_train(
     cfg : DictConfig
         The configuration for the train function.
         Loaded dynamically from the config file.
+    kwargs : dict[str, Any]
+        Additional keyword arguments to pass to the train function.
 
     Returns
     -------
@@ -72,7 +76,7 @@ def dispatch_train(
     return None
 
 
-def dispatch_data(cfg: DictConfig) -> DataStructure | None:
+def dispatch_data(cfg: DictConfig, **kwargs: dict[str, Any]) -> DataStructure | None:
     """Dispatch the train/test and fed test functions based on the config file.
 
     Do not throw any errors based on not finding a given attribute
@@ -87,6 +91,8 @@ def dispatch_data(cfg: DictConfig) -> DataStructure | None:
     cfg : DictConfig
         The configuration for the data functions.
         Loaded dynamically from the config file.
+    kwargs : dict[str, Any]
+        Additional keyword arguments to pass to the data functions.
 
     Returns
     -------
