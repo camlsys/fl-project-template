@@ -4,6 +4,7 @@ It includes processing the dataset, instantiate strategy, specifying how the glo
 model will be evaluated, etc. In the end, this script saves the results.
 """
 
+import copy
 import logging
 import os
 import subprocess
@@ -151,7 +152,8 @@ def main(cfg: DictConfig) -> None:
             )
             # The folder starts either empty or only with restored files
             # as specified in the config
-            init_working_dir(working_dir, results_dir)
+            if init_working_dir is not None:
+                init_working_dir(working_dir, results_dir)
 
             # Parameters/rng/history state for the strategy
             # Uses the path to the saved initial parameters and state
@@ -186,6 +188,7 @@ def main(cfg: DictConfig) -> None:
                 seed=cfg.fed.seed,
                 server_round=fs_manager.server_round,
                 use_wandb=cfg.use_wandb,
+                hydra_config=cfg,
             )
             initial_parameters, server_rng, history = saved_state
 
@@ -232,6 +235,7 @@ def main(cfg: DictConfig) -> None:
                 ),
                 working_dir,
                 server_isolated_rng,
+                copy.deepcopy(cfg),
             )
 
             # Define your strategy
@@ -298,19 +302,20 @@ def main(cfg: DictConfig) -> None:
                 train=train_func,
                 test=test_func,
                 client_seed_generator=client_seed_rng,
+                hydra_config=cfg,
             )
-
-            # Runs fit and eval on either one client or all of them
-            # Avoids launching ray for debugging purposes
-            test_client(
-                test_all_clients=cfg.debug_clients.all,
-                test_one_client=cfg.debug_clients.one,
-                client_generator=client_generator,
-                initial_parameters=initial_parameters,
-                total_clients=cfg.fed.num_total_clients,
-                on_fit_config_fn=on_fit_config_fn,
-                on_evaluate_config_fn=on_evaluate_config_fn,
-            )
+            if initial_parameters is not None:
+                # Runs fit and eval on either one client or all of them
+                # Avoids launching ray for debugging purposes
+                test_client(
+                    test_all_clients=cfg.debug_clients.all,
+                    test_one_client=cfg.debug_clients.one,
+                    client_generator=client_generator,
+                    initial_parameters=initial_parameters,
+                    total_clients=cfg.fed.num_total_clients,
+                    on_fit_config_fn=on_fit_config_fn,
+                    on_evaluate_config_fn=on_evaluate_config_fn,
+                )
 
             # Start Simulation
             # The ray_init_args are only necessary

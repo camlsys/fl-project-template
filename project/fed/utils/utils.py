@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, cast
 import numpy as np
 
+from omegaconf import DictConfig
 import torch
 from flwr.common import (
     NDArrays,
@@ -121,7 +122,7 @@ def load_parameters_from_file(path: Path) -> Parameters:
 
 
 def get_state(
-    net_generator: NetGen,
+    net_generator: NetGen | None,
     config: dict,
     load_parameters_from: Path | None,
     load_rng_from: Path | None,
@@ -129,7 +130,8 @@ def get_state(
     seed: int,
     server_round: int,
     use_wandb: bool,
-) -> tuple[Parameters, ServerRNG, History]:
+    hydra_config: DictConfig | None,
+) -> tuple[Parameters | None, ServerRNG, History]:
     """Get initial parameters for the network+rng state if starting from a checkpoint.
 
     Parameters
@@ -156,8 +158,14 @@ def get_state(
         server_rng_tuple = load_and_set_rng(seed, None, None)
 
         return (
-            ndarrays_to_parameters(
-                generic_get_parameters(net_generator(config, server_rng_tuple[0])),
+            (
+                ndarrays_to_parameters(
+                    generic_get_parameters(
+                        net_generator(config, server_rng_tuple[0], hydra_config)
+                    ),
+                )
+                if net_generator is not None
+                else None
             ),
             server_rng_tuple,
             load_history(None, None, use_wandb),
@@ -173,6 +181,7 @@ def get_state(
                 seed=seed,
                 server_round=server_round,
                 use_wandb=use_wandb,
+                hydra_config=hydra_config,
             )
         parameters_path = (
             load_parameters_from / f"{Files.PARAMETERS}_{server_round}.{Ext.PARAMETERS}"
@@ -210,6 +219,7 @@ def get_state(
             seed=seed,
             server_round=server_round,
             use_wandb=use_wandb,
+            hydra_config=hydra_config,
         )
 
 

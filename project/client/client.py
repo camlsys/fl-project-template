@@ -8,6 +8,7 @@ from pathlib import Path
 
 import flwr as fl
 from flwr.common import NDArrays
+from omegaconf import DictConfig
 from pydantic import BaseModel
 from torch import nn
 
@@ -59,11 +60,12 @@ class Client(fl.client.NumPyClient):
         self,
         cid: CID,
         working_dir: Path,
-        net_generator: NetGen,
-        dataloader_gen: ClientDataloaderGen,
+        net_generator: NetGen | None,
+        dataloader_gen: ClientDataloaderGen | None,
         train: TrainFunc,
         test: TestFunc,
         client_seed: int,
+        hydra_config: DictConfig | None,
     ) -> None:
         """Initialize the client.
 
@@ -100,6 +102,8 @@ class Client(fl.client.NumPyClient):
         self.client_seed = client_seed
         self.rng_tuple = get_isolated_rng_tuple(self.client_seed, obtain_device())
 
+        self.hydra_config = hydra_config
+
     def fit(
         self,
         parameters: NDArrays,
@@ -132,11 +136,16 @@ class Client(fl.client.NumPyClient):
             parameters,
             config.net_config,
         )
-        trainloader = self.dataloader_gen(
-            self.cid,
-            False,
-            config.dataloader_config,
-            self.rng_tuple,
+        trainloader = (
+            self.dataloader_gen(
+                self.cid,
+                False,
+                config.dataloader_config,
+                self.rng_tuple,
+                self.hydra_config,
+            )
+            if self.dataloader_gen is not None
+            else None
         )
         num_samples, metrics = self.train(
             self.net,
@@ -144,6 +153,7 @@ class Client(fl.client.NumPyClient):
             config.run_config,
             self.working_dir,
             self.rng_tuple,
+            self.hydra_config,
         )
 
         return (
@@ -184,11 +194,16 @@ class Client(fl.client.NumPyClient):
             parameters,
             config.net_config,
         )
-        testloader = self.dataloader_gen(
-            self.cid,
-            True,
-            config.dataloader_config,
-            self.rng_tuple,
+        testloader = (
+            self.dataloader_gen(
+                self.cid,
+                True,
+                config.dataloader_config,
+                self.rng_tuple,
+                self.hydra_config,
+            )
+            if self.dataloader_gen is not None
+            else None
         )
         loss, num_samples, metrics = self.test(
             self.net,
@@ -196,6 +211,7 @@ class Client(fl.client.NumPyClient):
             config.run_config,
             self.working_dir,
             self.rng_tuple,
+            self.hydra_config,
         )
         return loss, num_samples, metrics
 
@@ -246,7 +262,14 @@ class Client(fl.client.NumPyClient):
         nn.Module
             The network with the new parameters.
         """
-        net = self.net_generator(config, self.rng_tuple)
+        net = (
+            self.net_generator(config, self.rng_tuple, self.hydra_config)
+            if self.net_generator is not None
+            else None
+        )
+        if net is None:
+            raise ValueError("Cannot request parameters without net generator method")
+
         generic_set_parameters(
             net,
             parameters,
@@ -265,11 +288,12 @@ class Client(fl.client.NumPyClient):
 
 def get_client_generator(
     working_dir: Path,
-    net_generator: NetGen,
-    dataloader_gen: ClientDataloaderGen,
+    net_generator: NetGen | None,
+    dataloader_gen: ClientDataloaderGen | None,
     train: TrainFunc,
     test: TestFunc,
     client_seed_generator: random.Random,
+    hydra_config: DictConfig | None,
 ) -> ClientGen:
     """Return a function which creates a new Client.
 
@@ -329,6 +353,7 @@ def get_client_generator(
             train,
             test,
             client_seed=client_seed_generator.randint(0, 2**32 - 1),
+            hydra_config=hydra_config,
         )
 
     return client_generator

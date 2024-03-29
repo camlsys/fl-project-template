@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from omegaconf import DictConfig
 import torch
 from torch.utils.data import DataLoader
 
@@ -44,7 +45,11 @@ def get_dataloader_generators(
     """
 
     def get_client_dataloader(
-        cid: CID, test: bool, _config: dict, rng_tuple: IsolatedRNG
+        cid: CID,
+        test: bool,
+        _config: dict,
+        rng_tuple: IsolatedRNG,
+        _hydra_config: DictConfig | None,
     ) -> DataLoader:
         """Return a DataLoader for a client's dataset.
 
@@ -83,7 +88,10 @@ def get_dataloader_generators(
         )
 
     def get_federated_dataloader(
-        test: bool, _config: dict, rng_tuple: IsolatedRNG
+        test: bool,
+        _config: dict,
+        rng_tuple: IsolatedRNG,
+        _hydra_config: DictConfig | None,
     ) -> DataLoader:
         """Return a DataLoader for federated train/test sets.
 

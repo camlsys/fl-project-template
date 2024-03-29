@@ -4,6 +4,7 @@ from collections.abc import Sized
 from pathlib import Path
 from typing import cast
 
+from omegaconf import DictConfig
 import torch
 from flwr.common import NDArrays
 from pydantic import BaseModel
@@ -41,11 +42,12 @@ class TrainConfig(BaseModel):
 
 
 def train(
-    net: nn.Module,
-    trainloader: DataLoader,
+    net: nn.Module | NDArrays,
+    trainloader: DataLoader | None,
     _config: dict,
     _working_dir: Path,
     rng_tuple: IsolatedRNG,
+    _hydra_config: DictConfig | None,
 ) -> tuple[int, dict]:
     """Train the network on the training set.
 
@@ -72,6 +74,11 @@ def train(
         The number of samples used for training,
         the loss, and the accuracy of the input model on the given data.
     """
+    if not isinstance(net, nn.Module) or trainloader is None:
+        raise ValueError(
+            "The default config does not use an implicit network generator/dataset"
+        )
+
     if len(cast(Sized, trainloader.dataset)) == 0:
         raise ValueError(
             "Trainloader can't be 0, exiting...",
@@ -102,11 +109,12 @@ class TestConfig(BaseModel):
 
 
 def test(
-    net: nn.Module,
-    testloader: DataLoader,
+    net: nn.Module | NDArrays,
+    testloader: DataLoader | None,
     _config: dict,
     _working_dir: Path,
     rng_tuple: IsolatedRNG,
+    _hydra_config: DictConfig | None,
 ) -> tuple[float, int, dict]:
     """Evaluate the network on the test set.
 
@@ -133,6 +141,11 @@ def test(
         The loss, number of test samples,
         and the accuracy of the input model on the given data.
     """
+    if not isinstance(net, nn.Module) or testloader is None:
+        raise ValueError(
+            "The default config does not use an implicit network generator/dataset"
+        )
+
     if len(cast(Sized, testloader.dataset)) == 0:
         raise ValueError(
             "Testloader can't be 0, exiting...",
@@ -152,12 +165,13 @@ def test(
 
 
 def get_fed_eval_fn(
-    net_generator: NetGen,
-    fed_dataloader_generator: FedDataloaderGen,
+    net_generator: NetGen | None,
+    fed_dataloader_generator: FedDataloaderGen | None,
     test_func: TestFunc,
     _config: dict,
     working_dir: Path,
     rng_tuple: IsolatedRNG,
+    hydra_config: DictConfig | None,
 ) -> FedEvalFN | None:
     """Get the federated evaluation function.
 
@@ -188,10 +202,15 @@ def get_fed_eval_fn(
     config: ClientConfig = ClientConfig(**_config)
     del _config
 
-    testloader = fed_dataloader_generator(
-        True,
-        config.dataloader_config,
-        rng_tuple,
+    testloader = (
+        fed_dataloader_generator(
+            True,
+            config.dataloader_config,
+            rng_tuple,
+            hydra_config,
+        )
+        if fed_dataloader_generator
+        else None
     )
 
     def fed_eval_fn(
@@ -215,19 +234,26 @@ def get_fed_eval_fn(
         Optional[Tuple[float, Dict]]
             The loss and the accuracy of the input model on the given data.
         """
-        net = net_generator(config.net_config, rng_tuple)
-        generic_set_parameters(net, parameters)
+        net = (
+            net_generator(config.net_config, rng_tuple, hydra_config)
+            if net_generator
+            else None
+        )
+        if net is not None:
+            generic_set_parameters(net, parameters)
+
         config.run_config["device"] = obtain_device()
 
-        if len(cast(Sized, testloader.dataset)) == 0:
+        if testloader is not None and len(cast(Sized, testloader.dataset)) == 0:
             return None
 
         loss, _num_samples, metrics = test_func(
-            net,
+            net if net is not None else parameters,
             testloader,
             config.run_config,
             working_dir,
             rng_tuple,
+            hydra_config,
         )
         return loss, metrics
 

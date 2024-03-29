@@ -12,6 +12,7 @@ from itertools import chain, islice
 from pathlib import Path
 from types import TracebackType
 from typing import Any, cast
+from omegaconf import DictConfig
 from pydantic import BaseModel
 
 import ray
@@ -56,7 +57,9 @@ def lazy_wrapper(x: Callable) -> Callable[[], Any]:
     return lambda: x
 
 
-def lazy_config_wrapper(x: Callable) -> Callable[[dict, IsolatedRNG], Any]:
+def lazy_config_wrapper(
+    x: Callable,
+) -> Callable[[dict, IsolatedRNG, DictConfig | None], Any]:
     """Wrap a value in a function that returns the value given a config and rng_tuple.
 
     For easy instantiation through hydra.
@@ -71,7 +74,7 @@ def lazy_config_wrapper(x: Callable) -> Callable[[dict, IsolatedRNG], Any]:
     Callable[[Dict], Any]
         The wrapped value.
     """
-    return lambda _config, _rng_tuple: x()
+    return lambda _config, _rng_tuple, _hydra_config: x()
 
 
 class NoOpContextManager:
