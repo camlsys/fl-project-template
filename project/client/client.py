@@ -92,7 +92,7 @@ class Client(fl.client.NumPyClient):
         self.cid = cid
         self.net_generator = net_generator
         self.working_dir = working_dir
-        self.net: nn.Module | None = None
+        self.net: nn.Module | NDArrays | None = None
         self.dataloader_gen = dataloader_gen
         self.train = train
         self.test = test
@@ -147,7 +147,7 @@ class Client(fl.client.NumPyClient):
             if self.dataloader_gen is not None
             else None
         )
-        num_samples, metrics = self.train(
+        self.net, num_samples, metrics = self.train(
             self.net,
             trainloader,
             config.run_config,
@@ -233,19 +233,22 @@ class Client(fl.client.NumPyClient):
         if self.net is None:
             except_str: str = """Network is None.
                 Call set_parameters first and
+                except_str,
                 do not use this template without a get_initial_parameters function.
             """
-            raise ValueError(
-                except_str,
-            )
+            raise ValueError(except_str)
 
-        return generic_get_parameters(self.net)
+        return (
+            generic_get_parameters(self.net)
+            if isinstance(self.net, nn.Module)
+            else self.net
+        )
 
     def set_parameters(
         self,
         parameters: NDArrays,
         config: dict,
-    ) -> nn.Module:
+    ) -> nn.Module | NDArrays:
         """Set client parameters.
 
         First generated the network. Only call this in fit/eval.
@@ -268,7 +271,7 @@ class Client(fl.client.NumPyClient):
             else None
         )
         if net is None:
-            raise ValueError("Cannot request parameters without net generator method")
+            return parameters
 
         generic_set_parameters(
             net,
@@ -332,7 +335,7 @@ def get_client_generator(
         The function which creates a new Client.
     """
 
-    def client_generator(cid: CID) -> Client:
+    def client_generator(cid: CID) -> fl.client.NumPyClient:
         """Return a new Client.
 
         Parameters

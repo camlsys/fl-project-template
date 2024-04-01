@@ -46,7 +46,7 @@ def train(  # pylint: disable=too-many-arguments
     _working_dir: Path,
     _rng_tuple: IsolatedRNG,
     _hydra_config: DictConfig | None,
-) -> tuple[int, dict]:
+) -> tuple[nn.Module | NDArrays, int, dict]:
     """Train the network on the training set.
 
     Parameters
@@ -113,11 +113,16 @@ def train(  # pylint: disable=too-many-arguments
             loss.backward()
             optimizer.step()
 
-    return len(cast(Sized, trainloader.dataset)), {
-        "train_loss": final_epoch_per_sample_loss
-        / len(cast(Sized, trainloader.dataset)),
-        "train_accuracy": float(num_correct) / len(cast(Sized, trainloader.dataset)),
-    }
+    return (
+        net,
+        len(cast(Sized, trainloader.dataset)),
+        {
+            "train_loss": final_epoch_per_sample_loss
+            / len(cast(Sized, trainloader.dataset)),
+            "train_accuracy": float(num_correct)
+            / len(cast(Sized, trainloader.dataset)),
+        },
+    )
 
 
 class TestConfig(BaseModel):

@@ -48,7 +48,7 @@ def train(
     _working_dir: Path,
     rng_tuple: IsolatedRNG,
     _hydra_config: DictConfig | None,
-) -> tuple[int, dict]:
+) -> tuple[nn.Module | NDArrays, int, dict]:
     """Train the network on the training set.
 
     Parameters
@@ -90,7 +90,7 @@ def train(
     net.to(config.device)
     net.train()
 
-    return len(cast(Sized, trainloader.dataset)), {}
+    return net, len(cast(Sized, trainloader.dataset)), {}
 
 
 class TestConfig(BaseModel):

@@ -133,7 +133,7 @@ TrainFunc = Callable[
         IsolatedRNG,
         DictConfig | None,
     ],
-    tuple[int, dict],
+    tuple[nn.Module | NDArrays, int, dict],
 ]
 TestFunc = Callable[
     [
