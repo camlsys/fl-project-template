@@ -20,6 +20,7 @@ from project.types.common import (
     NetGen,
     OnFitConfigFN,
     TestFunc,
+    CID,
 )
 from project.utils.utils import obtain_device
 
@@ -31,6 +32,7 @@ class TrainConfig(BaseModel):
     mismatched to client.
     """
 
+    cid: CID
     device: torch.device
     # epochs: int
     # learning_rate: float
@@ -100,6 +102,7 @@ class TestConfig(BaseModel):
     mismatched to client.
     """
 
+    cid: CID
     device: torch.device
 
     class Config:
@@ -243,6 +246,7 @@ def get_fed_eval_fn(
             generic_set_parameters(net, parameters)
 
         config.run_config["device"] = obtain_device()
+        config.run_config["cid"] = "server"
 
         if testloader is not None and len(cast(Sized, testloader.dataset)) == 0:
             return None

@@ -19,7 +19,7 @@ from project.task.default.train_test import (
 from project.task.default.train_test import (
     get_on_fit_config_fn as get_default_on_fit_config_fn,
 )
-from project.types.common import IsolatedRNG
+from project.types.common import IsolatedRNG, CID
 
 
 class TrainConfig(BaseModel):
@@ -29,6 +29,7 @@ class TrainConfig(BaseModel):
     mismatched to client.
     """
 
+    cid: CID
     device: torch.device
     epochs: int
     learning_rate: float
@@ -132,6 +133,7 @@ class TestConfig(BaseModel):
     mismatched to client.
     """
 
+    cid: CID
     device: torch.device
 
     class Config:

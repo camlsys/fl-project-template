@@ -131,6 +131,7 @@ class Client(fl.client.NumPyClient):
         del _config
 
         config.run_config["device"] = obtain_device()
+        config.run_config["cid"] = self.cid
 
         self.net = self.set_parameters(
             parameters,
@@ -189,6 +190,7 @@ class Client(fl.client.NumPyClient):
         del _config
 
         config.run_config["device"] = obtain_device()
+        config.run_config["cid"] = self.cid
 
         self.net = self.set_parameters(
             parameters,
