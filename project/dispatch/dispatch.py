@@ -12,6 +12,10 @@ from omegaconf import DictConfig
 from project.task.default.dispatch import dispatch_config as dispatch_default_config
 from project.task.default.dispatch import dispatch_data as dispatch_default_data
 from project.task.default.dispatch import dispatch_train as dispatch_default_train
+from project.client.client import (
+    dispatch_client_gen as dispatch_default_client_gen,
+)
+
 from project.task.mnist_classification.dispatch import (
     dispatch_config as dispatch_mnist_config,
 )
@@ -21,7 +25,12 @@ from project.task.mnist_classification.dispatch import (
 from project.task.mnist_classification.dispatch import (
     dispatch_train as dispatch_mnist_train,
 )
-from project.types.common import ConfigStructure, DataStructure, TrainStructure
+from project.types.common import (
+    ConfigStructure,
+    DataStructure,
+    GetClientGen,
+    TrainStructure,
+)
 
 
 def dispatch_train(cfg: DictConfig, **kwargs: Any) -> TrainStructure:
@@ -134,4 +143,42 @@ def dispatch_config(cfg: DictConfig, **kwargs: Any) -> ConfigStructure:
 
     raise ValueError(
         f"Unable to match the config generation functions: {cfg}",
+    )
+
+
+def dispatch_get_client_generator(cfg: DictConfig, **kwargs: Any) -> GetClientGen:
+    """Dispatch the get_client_generator function based on the hydra config.
+
+    Functionality should be added to the dispatch.py
+    file in the task folder.
+    Statically specify the new dispatch function in the list,
+    function order determines precedence
+    if two different tasks may match the config.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        The configuration for the get_client_generators function.
+        Loaded dynamically from the config file.
+    kwargs : dict[str, Any]
+        Additional keyword arguments to pass to the get_client_generators function.
+
+    Returns
+    -------
+    GetClientGen
+        The get_client_generators function.
+    """
+    # Create the list of task dispatches to try
+    task_get_client_generators: list[Callable[..., Callable | None]] = [
+        dispatch_default_client_gen
+    ]
+
+    # Match the first function which does not return None
+    for task in task_get_client_generators:
+        result = task(cfg, **kwargs)
+        if result is not None:
+            return result
+
+    raise ValueError(
+        f"Unable to match the get_client_generators function: {cfg}",
     )

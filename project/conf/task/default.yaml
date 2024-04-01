@@ -6,6 +6,8 @@ model_and_data: DEFAULT
 # Choose the train, test and server fed_eval functions
 train_structure: DEFAULT
 
+client_gen: DEFAULT
+
 # Client fit config
 fit_config:
   # Default net is empty and takes no args

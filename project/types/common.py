@@ -209,6 +209,27 @@ DataStructure = tuple[
 ConfigStructure = tuple[OnFitConfigFN, OnEvaluateConfigFN]
 
 
+GetClientGen = Callable[
+    [
+        # The working directory
+        Path,
+        # The network generator
+        NetGen | None,
+        # The client dataloader generator
+        ClientDataloaderGen | None,
+        # The training function
+        TrainFunc,
+        # The testing function
+        TestFunc,
+        # Seeded rng for client seed initialization
+        random.Random,
+        # Hydra config
+        DictConfig | None,
+    ],
+    ClientGen,
+]
+
+
 class IntentionalDropoutError(Exception):
     """Exception raised when a client intentionally drops out."""
 

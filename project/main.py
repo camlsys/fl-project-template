@@ -22,8 +22,12 @@ from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
-from project.client.client import get_client_generator
-from project.dispatch.dispatch import dispatch_config, dispatch_data, dispatch_train
+from project.dispatch.dispatch import (
+    dispatch_config,
+    dispatch_data,
+    dispatch_get_client_generator,
+    dispatch_train,
+)
 from project.fed.server.deterministic_client_manager import DeterministicClientManager
 from project.fed.server.wandb_server import WandbServer
 from project.fed.utils.utils import (
@@ -218,6 +222,8 @@ def main(cfg: DictConfig) -> None:
                 on_evaluate_config_fn,
             ) = dispatch_config(cfg)
 
+            get_client_generator = dispatch_get_client_generator(cfg)
+
             # Build the evaluate function from the given components
             # This is the function that is called on the server
             # to evaluated the global model
@@ -296,13 +302,13 @@ def main(cfg: DictConfig) -> None:
             # Client generation function for Ray
             # Do not change
             client_generator: ClientGen = get_client_generator(
-                working_dir=working_dir,
-                net_generator=net_generator,
-                dataloader_gen=client_dataloader_gen,
-                train=train_func,
-                test=test_func,
-                client_seed_generator=client_seed_rng,
-                hydra_config=cfg,
+                working_dir,
+                net_generator,
+                client_dataloader_gen,
+                train_func,
+                test_func,
+                client_seed_rng,
+                cfg,
             )
             if initial_parameters is not None:
                 # Runs fit and eval on either one client or all of them

@@ -5,6 +5,7 @@ Make sure the model and dataset are not loaded before the fit function.
 
 import random
 from pathlib import Path
+from typing import Any
 
 import flwr as fl
 from flwr.common import NDArrays
@@ -23,6 +24,7 @@ from project.types.common import (
     ClientGen,
     EvalRes,
     FitRes,
+    GetClientGen,
     NetGen,
     TestFunc,
     TrainFunc,
@@ -362,3 +364,29 @@ def get_client_generator(
         )
 
     return client_generator
+
+
+def dispatch_client_gen(cfg: DictConfig, **kwargs: Any) -> GetClientGen | None:
+    """Dispatch the get_client_generator function based on the hydra config.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        The configuration for the get_client_generators function.
+        Loaded dynamically from the config file.
+
+    Returns
+    -------
+    Optional[GetClientGen]
+        The get_client_generator function.
+        Return None if you cannot match the cfg.
+    """
+    client_gen: str | None = cfg.get("task", None).get("client_gen", None)
+
+    if client_gen is None:
+        return None
+
+    if client_gen.upper() == "DEFAULT":
+        return get_client_generator
+
+    return None
