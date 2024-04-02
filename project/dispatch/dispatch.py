@@ -13,6 +13,10 @@ from project.fed.server.deterministic_client_manager import (
     DeterministicClientManager,
     dispatch_deterministic_client_manager as dispatch_default_client_manager,
 )
+from project.fed.server.wandb_server import (
+    WandbServer,
+    dispatch_wandb_server as dispatch_default_server,
+)
 from project.task.default.dispatch import dispatch_config as dispatch_default_config
 from project.task.default.dispatch import dispatch_data as dispatch_default_data
 from project.task.default.dispatch import dispatch_train as dispatch_default_train
@@ -174,7 +178,7 @@ def dispatch_get_client_generator(cfg: DictConfig, **kwargs: Any) -> GetClientGe
     """
     # Create the list of task dispatches to try
     task_get_client_generators: list[Callable[..., GetClientGen | None]] = [
-        dispatch_default_client_gen
+        dispatch_default_client_gen,
     ]
 
     # Match the first function which does not return None
@@ -209,7 +213,9 @@ def dispatch_get_client_manager(
     # Create the list of task dispatches to try
     task_get_client_managers: list[
         Callable[..., type[DeterministicClientManager] | None]
-    ] = [dispatch_default_client_manager]
+    ] = [
+        dispatch_default_client_manager,
+    ]
 
     # Match the first function which does not return None
     for task in task_get_client_managers:
@@ -218,5 +224,35 @@ def dispatch_get_client_manager(
             return result
 
     raise ValueError(
-        f"Unable to match the get_client_generators function: {cfg}",
+        f"Unable to match the get_client_manager function: {cfg}",
+    )
+
+
+def dispatch_server(cfg: DictConfig, **kwargs: Any) -> type[WandbServer]:
+    """Dispatch the get_server function based on the hydra config.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        The configuration for the get_server function.
+        Loaded dynamically from the config file.
+
+    Returns
+    -------
+    type[WandbServer]
+        The get_server function.
+    """
+    # Create the list of task dispatches to try
+    task_get_client_managers: list[Callable[..., type[WandbServer] | None]] = [
+        dispatch_default_server,
+    ]
+
+    # Match the first function which does not return None
+    for task in task_get_client_managers:
+        result = task(cfg, **kwargs)
+        if result is not None:
+            return result
+
+    raise ValueError(
+        f"Unable to match the get_client_manager function: {cfg}",
     )

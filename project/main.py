@@ -27,9 +27,9 @@ from project.dispatch.dispatch import (
     dispatch_data,
     dispatch_get_client_generator,
     dispatch_get_client_manager,
+    dispatch_server,
     dispatch_train,
 )
-from project.fed.server.wandb_server import WandbServer
 from project.fed.utils.utils import (
     get_save_history_to_file,
     get_state,
@@ -273,8 +273,9 @@ def main(cfg: DictConfig) -> None:
             )
 
             # Server that handles Wandb and file saving
-            server = WandbServer(
+            server = dispatch_server(cfg)(
                 client_manager=client_manager,
+                hydra_config=cfg,
                 starting_round=fs_manager.server_round,
                 server_rng=server_rng,
                 history=history,

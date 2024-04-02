@@ -3,6 +3,7 @@
 import timeit
 from collections.abc import Callable
 from logging import INFO
+from typing import Any
 
 from flwr.common import Parameters
 from flwr.common.logger import log
@@ -10,6 +11,7 @@ from flwr.server import Server
 from flwr.server.client_manager import ClientManager
 from flwr.server.history import History
 from flwr.server.strategy import Strategy
+from omegaconf import DictConfig
 
 from project.types.common import ServerRNG
 
@@ -21,6 +23,7 @@ class WandbServer(Server):
         self,
         *,
         client_manager: ClientManager,
+        hydra_config: DictConfig | None,
         starting_round: int = 0,
         server_rng: ServerRNG,
         strategy: Strategy | None = None,
@@ -64,6 +67,7 @@ class WandbServer(Server):
         self.server_rng = server_rng
         self.save_rng_to_file = save_rng_to_file
         self.save_history_to_file = save_history_to_file
+        self.hydra_config = hydra_config
 
     # pylint: disable=too-many-locals
     def fit(
@@ -193,3 +197,30 @@ class WandbServer(Server):
         elapsed = end_time - start_time
         log(INFO, "FL finished in %s", elapsed)
         return history
+
+
+def dispatch_wandb_server(cfg: DictConfig, **kwargs: Any) -> type[WandbServer] | None:
+    """Dispatch the get_wandb_server function based on the hydra config.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        The configuration for the get_wandb_server function.
+        Loaded dynamically from the config file.
+    kwargs : dict[str, Any]
+        Additional keyword arguments to pass to the get_wandb_server function.
+
+    Returns
+    -------
+    type[WandbServer]
+        The get_wandb_server function.
+    """
+    server: str | None = cfg.get("task", None).get("server", None)
+
+    if server is None:
+        return None
+
+    if server.upper() == "DEFAULT":
+        return WandbServer
+
+    return None

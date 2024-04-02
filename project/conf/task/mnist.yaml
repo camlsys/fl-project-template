@@ -8,6 +8,7 @@ train_structure: MNIST
 
 client_gen: DEFAULT
 client_manager: DEFAULT
+server: DEFAULT
 
 # Client fit config
 fit_config:
