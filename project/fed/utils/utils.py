@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, cast
 import numpy as np
 
+from omegaconf import DictConfig
 import torch
 from flwr.common import (
     NDArrays,
@@ -58,15 +59,18 @@ def generic_set_parameters(
     -------
     None
     """
+    sorted_dict = sorted(net.state_dict().items(), key=lambda x: x[0])  # Sort by keys
+
     params_dict = zip(
-        net.state_dict().keys(),
+        (keys for keys, _ in sorted_dict),
         parameters,
-        strict=True,
+        strict=False,
     )
     state_dict = OrderedDict(
-        {k: torch.Tensor(v if not to_copy else v.copy()) for k, v in params_dict},
+        {k: torch.tensor(v if not to_copy else v.copy()) for k, v in params_dict},
     )
-    net.load_state_dict(state_dict, strict=True)
+
+    net.load_state_dict(state_dict)
 
 
 def generic_get_parameters(net: nn.Module) -> NDArrays:
@@ -82,7 +86,12 @@ def generic_get_parameters(net: nn.Module) -> NDArrays:
         NDArrays
         The parameters of the network.
     """
-    return [val.cpu().numpy() for _, val in net.state_dict().items()]
+    state_dict_items = sorted(
+        net.state_dict().items(), key=lambda x: x[0]
+    )  # Sort by keys
+    parameters = [val.cpu().numpy() for _, val in state_dict_items]
+
+    return parameters
 
 
 def load_parameters_from_file(path: Path) -> Parameters:
@@ -121,7 +130,7 @@ def load_parameters_from_file(path: Path) -> Parameters:
 
 
 def get_state(
-    net_generator: NetGen,
+    net_generator: NetGen | None,
     config: dict,
     load_parameters_from: Path | None,
     load_rng_from: Path | None,
@@ -129,7 +138,8 @@ def get_state(
     seed: int,
     server_round: int,
     use_wandb: bool,
-) -> tuple[Parameters, ServerRNG, History]:
+    hydra_config: DictConfig | None,
+) -> tuple[Parameters | None, ServerRNG, History]:
     """Get initial parameters for the network+rng state if starting from a checkpoint.
 
     Parameters
@@ -156,8 +166,14 @@ def get_state(
         server_rng_tuple = load_and_set_rng(seed, None, None)
 
         return (
-            ndarrays_to_parameters(
-                generic_get_parameters(net_generator(config, server_rng_tuple[0])),
+            (
+                ndarrays_to_parameters(
+                    generic_get_parameters(
+                        net_generator(config, server_rng_tuple[0], hydra_config)
+                    ),
+                )
+                if net_generator is not None
+                else None
             ),
             server_rng_tuple,
             load_history(None, None, use_wandb),
@@ -173,6 +189,7 @@ def get_state(
                 seed=seed,
                 server_round=server_round,
                 use_wandb=use_wandb,
+                hydra_config=hydra_config,
             )
         parameters_path = (
             load_parameters_from / f"{Files.PARAMETERS}_{server_round}.{Ext.PARAMETERS}"
@@ -210,6 +227,7 @@ def get_state(
             seed=seed,
             server_round=server_round,
             use_wandb=use_wandb,
+            hydra_config=hydra_config,
         )
 
 
@@ -428,8 +446,9 @@ def get_weighted_avg_metrics_agg_fn(
         weighted_metrics: dict = defaultdict(float)
         for num_examples, metric in metrics:
             for key, value in metric.items():
-                if key in to_agg:
-                    weighted_metrics[key] += num_examples * value
+                for agg_metric in to_agg:
+                    if agg_metric in key:
+                        weighted_metrics[key] += num_examples * value
 
         return {
             key: value / total_num_examples for key, value in weighted_metrics.items()
@@ -661,3 +680,111 @@ def load_history(
         return history
 
     return load_history(None, None, use_wandb)
+
+
+def flatten_ndarrays(arrays: NDArrays) -> np.ndarray:
+    """
+    Flattens a list of arrays into a single 1-dimensional array.
+
+    Parameters
+    ----------
+        arrays (List[np.ndarray]): The list of arrays to be flattened.
+
+    Returns
+    -------
+        np.ndarray: The flattened array.
+    """
+    return np.concatenate([np.ravel(arr) for arr in arrays]) if arrays else np.array([])
+
+
+def unflatten_ndarrays(flattened_ndarrays: np.ndarray, ndarrays: NDArrays) -> NDArrays:
+    """Unflatten a 1-dimensional array into a list of arrays.
+
+    Parameters
+    ----------
+        flattened_ndarrays (np.ndarray): The flattened array.
+        ndarrays (List[np.ndarray]): The list of arrays providing the shape.
+
+    Returns
+    -------
+        List[np.ndarray]: The unflattened list of arrays.
+    """
+    return [
+        np.reshape(
+            flattened_ndarrays[
+                sum([np.prod(ndarray.shape) for ndarray in ndarrays[:i]]) : sum(
+                    [np.prod(ndarray.shape) for ndarray in ndarrays[: i + 1]]
+                )
+            ],
+            ndarray.shape,
+        )
+        for i, ndarray in enumerate(ndarrays)
+    ]
+
+
+def scaled_dot_product_attention(a: NDArrays, b: NDArrays) -> float:
+    """Compute the scaled dot product attention."""
+    flattened_a = flatten_ndarrays(a)
+    flattened_b = flatten_ndarrays(b)
+    if len(flattened_a) != len(flattened_b):
+        raise ValueError("The two vectors must have the same length.")
+    return np.dot(flattened_a, flattened_b) / np.sqrt(len(a)) if a and b else 0.0
+
+
+def cosine_similarity_attention(a: NDArrays, b: NDArrays) -> float:
+    """Compute cosine similarity attention."""
+    flattened_a = flatten_ndarrays(a)
+    flattened_b = flatten_ndarrays(b)
+    if len(flattened_a) != len(flattened_b):
+        raise ValueError("The two vectors must have the same length.")
+    return np.dot(flattened_a, flattened_b) / (
+        np.linalg.norm(flattened_a) * np.linalg.norm(flattened_b)
+    )
+
+
+def l1_norm(arrays: NDArrays) -> float:
+    """Compute the L1 norm of a list of arrays.
+
+    Parameters
+    ----------
+    arrays : NDArrays
+        List of arrays to compute the L1 norm of.
+
+    Returns
+    -------
+    float
+        The L1 norm of the list of arrays.
+    """
+    return sum(np.sum(np.abs(arr)) for arr in arrays)
+
+
+def sum_of_squares(arrays: NDArrays) -> float:
+    """Compute the sum of squares of a list of arrays.
+
+    Parameters
+    ----------
+    arrays : NDArrays
+        List of arrays to compute the sum of squares of.
+
+    Returns
+    -------
+    float
+        The sum of squares of the list of arrays.
+    """
+    return sum(np.sum(np.square(arr)) for arr in arrays)
+
+
+def l2_norm(arrays: NDArrays) -> float:
+    """Compute the L2 norm of a list of arrays.
+
+    Parameters
+    ----------
+    arrays : NDArrays
+        List of arrays to compute the L2 norm of.
+
+    Returns
+    -------
+    float
+        The L2 norm of the list of arrays.
+    """
+    return float(np.sqrt(sum_of_squares(arrays)))

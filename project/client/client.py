@@ -5,9 +5,11 @@ Make sure the model and dataset are not loaded before the fit function.
 
 import random
 from pathlib import Path
+from typing import Any
 
 import flwr as fl
 from flwr.common import NDArrays
+from omegaconf import DictConfig
 from pydantic import BaseModel
 from torch import nn
 
@@ -22,6 +24,7 @@ from project.types.common import (
     ClientGen,
     EvalRes,
     FitRes,
+    GetClientGen,
     NetGen,
     TestFunc,
     TrainFunc,
@@ -59,11 +62,12 @@ class Client(fl.client.NumPyClient):
         self,
         cid: CID,
         working_dir: Path,
-        net_generator: NetGen,
-        dataloader_gen: ClientDataloaderGen,
+        net_generator: NetGen | None,
+        dataloader_gen: ClientDataloaderGen | None,
         train: TrainFunc,
         test: TestFunc,
         client_seed: int,
+        hydra_config: DictConfig | None,
     ) -> None:
         """Initialize the client.
 
@@ -90,7 +94,7 @@ class Client(fl.client.NumPyClient):
         self.cid = cid
         self.net_generator = net_generator
         self.working_dir = working_dir
-        self.net: nn.Module | None = None
+        self.net: nn.Module | NDArrays | None = None
         self.dataloader_gen = dataloader_gen
         self.train = train
         self.test = test
@@ -99,6 +103,8 @@ class Client(fl.client.NumPyClient):
         # The client_seed is generated from a specific Generator
         self.client_seed = client_seed
         self.rng_tuple = get_isolated_rng_tuple(self.client_seed, obtain_device())
+
+        self.hydra_config = hydra_config
 
     def fit(
         self,
@@ -127,23 +133,30 @@ class Client(fl.client.NumPyClient):
         del _config
 
         config.run_config["device"] = obtain_device()
+        config.run_config["cid"] = self.cid
 
         self.net = self.set_parameters(
             parameters,
             config.net_config,
         )
-        trainloader = self.dataloader_gen(
-            self.cid,
-            False,
-            config.dataloader_config,
-            self.rng_tuple,
+        trainloader = (
+            self.dataloader_gen(
+                self.cid,
+                False,
+                config.dataloader_config,
+                self.rng_tuple,
+                self.hydra_config,
+            )
+            if self.dataloader_gen is not None
+            else None
         )
-        num_samples, metrics = self.train(
+        self.net, num_samples, metrics = self.train(
             self.net,
             trainloader,
             config.run_config,
             self.working_dir,
             self.rng_tuple,
+            self.hydra_config,
         )
 
         return (
@@ -179,16 +192,22 @@ class Client(fl.client.NumPyClient):
         del _config
 
         config.run_config["device"] = obtain_device()
+        config.run_config["cid"] = self.cid
 
         self.net = self.set_parameters(
             parameters,
             config.net_config,
         )
-        testloader = self.dataloader_gen(
-            self.cid,
-            True,
-            config.dataloader_config,
-            self.rng_tuple,
+        testloader = (
+            self.dataloader_gen(
+                self.cid,
+                True,
+                config.dataloader_config,
+                self.rng_tuple,
+                self.hydra_config,
+            )
+            if self.dataloader_gen is not None
+            else None
         )
         loss, num_samples, metrics = self.test(
             self.net,
@@ -196,6 +215,7 @@ class Client(fl.client.NumPyClient):
             config.run_config,
             self.working_dir,
             self.rng_tuple,
+            self.hydra_config,
         )
         return loss, num_samples, metrics
 
@@ -217,19 +237,22 @@ class Client(fl.client.NumPyClient):
         if self.net is None:
             except_str: str = """Network is None.
                 Call set_parameters first and
+                except_str,
                 do not use this template without a get_initial_parameters function.
             """
-            raise ValueError(
-                except_str,
-            )
+            raise ValueError(except_str)
 
-        return generic_get_parameters(self.net)
+        return (
+            generic_get_parameters(self.net)
+            if isinstance(self.net, nn.Module)
+            else self.net
+        )
 
     def set_parameters(
         self,
         parameters: NDArrays,
         config: dict,
-    ) -> nn.Module:
+    ) -> nn.Module | NDArrays:
         """Set client parameters.
 
         First generated the network. Only call this in fit/eval.
@@ -246,7 +269,14 @@ class Client(fl.client.NumPyClient):
         nn.Module
             The network with the new parameters.
         """
-        net = self.net_generator(config, self.rng_tuple)
+        net = (
+            self.net_generator(config, self.rng_tuple, self.hydra_config)
+            if self.net_generator is not None
+            else None
+        )
+        if net is None:
+            return parameters
+
         generic_set_parameters(
             net,
             parameters,
@@ -265,11 +295,12 @@ class Client(fl.client.NumPyClient):
 
 def get_client_generator(
     working_dir: Path,
-    net_generator: NetGen,
-    dataloader_gen: ClientDataloaderGen,
+    net_generator: NetGen | None,
+    dataloader_gen: ClientDataloaderGen | None,
     train: TrainFunc,
     test: TestFunc,
     client_seed_generator: random.Random,
+    hydra_config: DictConfig | None,
 ) -> ClientGen:
     """Return a function which creates a new Client.
 
@@ -308,7 +339,7 @@ def get_client_generator(
         The function which creates a new Client.
     """
 
-    def client_generator(cid: CID) -> Client:
+    def client_generator(cid: CID) -> fl.client.NumPyClient:
         """Return a new Client.
 
         Parameters
@@ -329,6 +360,33 @@ def get_client_generator(
             train,
             test,
             client_seed=client_seed_generator.randint(0, 2**32 - 1),
+            hydra_config=hydra_config,
         )
 
     return client_generator
+
+
+def dispatch_client_gen(cfg: DictConfig, **kwargs: Any) -> GetClientGen | None:
+    """Dispatch the get_client_generator function based on the hydra config.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        The configuration for the get_client_generators function.
+        Loaded dynamically from the config file.
+
+    Returns
+    -------
+    Optional[GetClientGen]
+        The get_client_generator function.
+        Return None if you cannot match the cfg.
+    """
+    client_gen: str | None = cfg.get("task", None).get("client_gen", None)
+
+    if client_gen is None:
+        return None
+
+    if client_gen.upper() == "DEFAULT":
+        return get_client_generator
+
+    return None

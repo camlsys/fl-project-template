@@ -1,5 +1,6 @@
 """Define our models, and training and eval functions."""
 
+from omegaconf import DictConfig
 from torch import nn
 
 from project.types.common import IsolatedRNG
@@ -11,7 +12,11 @@ class Net(nn.Module):
     # TODO: define your model here
 
 
-def get_net(_config: dict, rng_tuple: IsolatedRNG) -> nn.Module:
+def get_net(
+    _config: dict,
+    rng_tuple: IsolatedRNG,
+    _hydra_config: DictConfig | None,
+) -> nn.Module:
     """Return a model instance.
 
     Args:

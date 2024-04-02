@@ -109,12 +109,13 @@ def dispatch_data(cfg: DictConfig, **kwargs: Any) -> DataStructure | None:
 
     # Only consider not None matches, case insensitive
     if client_model_and_data is not None and client_model_and_data.upper() == "DEFAULT":
-        return (
+        ret_tuple: DataStructure = (
             get_net,
             get_client_dataloader,
             get_fed_dataloader,
             init_working_dir,
         )
+        return ret_tuple
 
     # Cannot match, send to next dispatch in chain
     return None

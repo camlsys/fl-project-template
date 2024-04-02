@@ -4,10 +4,13 @@ from collections.abc import Sized
 from pathlib import Path
 from typing import cast
 
+from omegaconf import DictConfig
 import torch
 from pydantic import BaseModel
 from torch import nn
 from torch.utils.data import DataLoader
+
+from flwr.common import NDArrays
 
 from project.task.default.train_test import get_fed_eval_fn as get_default_fed_eval_fn
 from project.task.default.train_test import (
@@ -16,7 +19,7 @@ from project.task.default.train_test import (
 from project.task.default.train_test import (
     get_on_fit_config_fn as get_default_on_fit_config_fn,
 )
-from project.types.common import IsolatedRNG
+from project.types.common import IsolatedRNG, CID
 
 
 class TrainConfig(BaseModel):
@@ -26,6 +29,7 @@ class TrainConfig(BaseModel):
     mismatched to client.
     """
 
+    cid: CID
     device: torch.device
     epochs: int
     learning_rate: float
@@ -37,12 +41,13 @@ class TrainConfig(BaseModel):
 
 
 def train(  # pylint: disable=too-many-arguments
-    net: nn.Module,
-    trainloader: DataLoader,
+    net: nn.Module | NDArrays,
+    trainloader: DataLoader | None,
     _config: dict,
     _working_dir: Path,
     _rng_tuple: IsolatedRNG,
-) -> tuple[int, dict]:
+    _hydra_config: DictConfig | None,
+) -> tuple[nn.Module | NDArrays, int, dict]:
     """Train the network on the training set.
 
     Parameters
@@ -68,6 +73,9 @@ def train(  # pylint: disable=too-many-arguments
         The number of samples used for training,
         the loss, and the accuracy of the input model on the given data.
     """
+    if not isinstance(net, nn.Module) or trainloader is None:
+        raise ValueError("MNIST does not support implicit model/dataset creation.")
+
     if len(cast(Sized, trainloader.dataset)) == 0:
         raise ValueError(
             "Trainloader can't be 0, exiting...",
@@ -106,11 +114,16 @@ def train(  # pylint: disable=too-many-arguments
             loss.backward()
             optimizer.step()
 
-    return len(cast(Sized, trainloader.dataset)), {
-        "train_loss": final_epoch_per_sample_loss
-        / len(cast(Sized, trainloader.dataset)),
-        "train_accuracy": float(num_correct) / len(cast(Sized, trainloader.dataset)),
-    }
+    return (
+        net,
+        len(cast(Sized, trainloader.dataset)),
+        {
+            "train_loss": final_epoch_per_sample_loss
+            / len(cast(Sized, trainloader.dataset)),
+            "train_accuracy": float(num_correct)
+            / len(cast(Sized, trainloader.dataset)),
+        },
+    )
 
 
 class TestConfig(BaseModel):
@@ -120,6 +133,7 @@ class TestConfig(BaseModel):
     mismatched to client.
     """
 
+    cid: CID
     device: torch.device
 
     class Config:
@@ -129,11 +143,12 @@ class TestConfig(BaseModel):
 
 
 def test(
-    net: nn.Module,
-    testloader: DataLoader,
+    net: nn.Module | NDArrays,
+    testloader: DataLoader | None,
     _config: dict,
     _working_dir: Path,
     _rng_tuple: IsolatedRNG,
+    _hydra_config: DictConfig | None,
 ) -> tuple[float, int, dict]:
     """Evaluate the network on the test set.
 
@@ -161,6 +176,9 @@ def test(
         The loss, number of test samples,
         and the accuracy of the input model on the given data.
     """
+    if not isinstance(net, nn.Module) or testloader is None:
+        raise ValueError("MNIST does not support implicit model/dataset creation.")
+
     if len(cast(Sized, testloader.dataset)) == 0:
         raise ValueError(
             "Testloader can't be 0, exiting...",

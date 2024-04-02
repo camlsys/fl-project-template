@@ -13,6 +13,7 @@ You can use all those functions from functions/methods defined here of course.
 from collections import defaultdict
 from pathlib import Path
 
+from omegaconf import DictConfig
 import torch
 from pydantic import BaseModel
 from torch.utils.data import DataLoader, Dataset, TensorDataset
@@ -55,6 +56,7 @@ def get_client_dataloader(
     test: bool,
     _config: dict,
     _rng_tuple: IsolatedRNG,
+    _hydra_config: DictConfig | None,
 ) -> DataLoader:
     """Return a DataLoader for a client's dataset.
 
@@ -119,6 +121,7 @@ def get_fed_dataloader(
     test: bool,
     _config: dict,
     _rng_tuple: IsolatedRNG,
+    _hydra_config: DictConfig | None,
 ) -> DataLoader:
     """Return a DataLoader for federated train/test sets.
 

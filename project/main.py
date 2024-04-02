@@ -4,6 +4,7 @@ It includes processing the dataset, instantiate strategy, specifying how the glo
 model will be evaluated, etc. In the end, this script saves the results.
 """
 
+import copy
 import logging
 import os
 import subprocess
@@ -21,10 +22,14 @@ from hydra.core.hydra_config import HydraConfig
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
-from project.client.client import get_client_generator
-from project.dispatch.dispatch import dispatch_config, dispatch_data, dispatch_train
-from project.fed.server.deterministic_client_manager import DeterministicClientManager
-from project.fed.server.wandb_server import WandbServer
+from project.dispatch.dispatch import (
+    dispatch_config,
+    dispatch_data,
+    dispatch_get_client_generator,
+    dispatch_get_client_manager,
+    dispatch_server,
+    dispatch_train,
+)
 from project.fed.utils.utils import (
     get_save_history_to_file,
     get_state,
@@ -151,7 +156,8 @@ def main(cfg: DictConfig) -> None:
             )
             # The folder starts either empty or only with restored files
             # as specified in the config
-            init_working_dir(working_dir, results_dir)
+            if init_working_dir is not None:
+                init_working_dir(working_dir, results_dir)
 
             # Parameters/rng/history state for the strategy
             # Uses the path to the saved initial parameters and state
@@ -186,6 +192,7 @@ def main(cfg: DictConfig) -> None:
                 seed=cfg.fed.seed,
                 server_round=fs_manager.server_round,
                 use_wandb=cfg.use_wandb,
+                hydra_config=cfg,
             )
             initial_parameters, server_rng, history = saved_state
 
@@ -193,9 +200,10 @@ def main(cfg: DictConfig) -> None:
 
             # Client manager that samples the same clients
             # For a given seed+checkpoint combination
-            client_manager = DeterministicClientManager(
+            client_manager = dispatch_get_client_manager(cfg)(
                 enable_resampling=cfg.fed.enable_resampling,
                 client_cid_generator=client_cid_rng,
+                hydra_config=cfg,
             )
 
             # Obtain the train/test func and the fed eval func
@@ -215,6 +223,8 @@ def main(cfg: DictConfig) -> None:
                 on_evaluate_config_fn,
             ) = dispatch_config(cfg)
 
+            get_client_generator = dispatch_get_client_generator(cfg)
+
             # Build the evaluate function from the given components
             # This is the function that is called on the server
             # to evaluated the global model
@@ -232,6 +242,7 @@ def main(cfg: DictConfig) -> None:
                 ),
                 working_dir,
                 server_isolated_rng,
+                copy.deepcopy(cfg),
             )
 
             # Define your strategy
@@ -262,8 +273,9 @@ def main(cfg: DictConfig) -> None:
             )
 
             # Server that handles Wandb and file saving
-            server = WandbServer(
+            server = dispatch_server(cfg)(
                 client_manager=client_manager,
+                hydra_config=cfg,
                 starting_round=fs_manager.server_round,
                 server_rng=server_rng,
                 history=history,
@@ -292,25 +304,26 @@ def main(cfg: DictConfig) -> None:
             # Client generation function for Ray
             # Do not change
             client_generator: ClientGen = get_client_generator(
-                working_dir=working_dir,
-                net_generator=net_generator,
-                dataloader_gen=client_dataloader_gen,
-                train=train_func,
-                test=test_func,
-                client_seed_generator=client_seed_rng,
+                working_dir,
+                net_generator,
+                client_dataloader_gen,
+                train_func,
+                test_func,
+                client_seed_rng,
+                cfg,
             )
-
-            # Runs fit and eval on either one client or all of them
-            # Avoids launching ray for debugging purposes
-            test_client(
-                test_all_clients=cfg.debug_clients.all,
-                test_one_client=cfg.debug_clients.one,
-                client_generator=client_generator,
-                initial_parameters=initial_parameters,
-                total_clients=cfg.fed.num_total_clients,
-                on_fit_config_fn=on_fit_config_fn,
-                on_evaluate_config_fn=on_evaluate_config_fn,
-            )
+            if initial_parameters is not None:
+                # Runs fit and eval on either one client or all of them
+                # Avoids launching ray for debugging purposes
+                test_client(
+                    test_all_clients=cfg.debug_clients.all,
+                    test_one_client=cfg.debug_clients.one,
+                    client_generator=client_generator,
+                    initial_parameters=initial_parameters,
+                    total_clients=cfg.fed.num_total_clients,
+                    on_fit_config_fn=on_fit_config_fn,
+                    on_evaluate_config_fn=on_evaluate_config_fn,
+                )
 
             # Start Simulation
             # The ray_init_args are only necessary

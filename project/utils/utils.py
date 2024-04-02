@@ -12,17 +12,19 @@ from itertools import chain, islice
 from pathlib import Path
 from types import TracebackType
 from typing import Any, cast
+from omegaconf import DictConfig
 from pydantic import BaseModel
 
 import ray
 import torch
 from flwr.common.logger import log
-from project.fed.utils.utils import Files
+from project.types.common import Files
 import wandb
 from wandb.sdk.wandb_run import Run
 from wandb.sdk.lib.disabled import RunDisabled
 
 from project.types.common import Ext, FileCountExceededError, Folders, IsolatedRNG
+from flwr.common import NDArrays
 
 
 def obtain_device() -> torch.device:
@@ -56,7 +58,9 @@ def lazy_wrapper(x: Callable) -> Callable[[], Any]:
     return lambda: x
 
 
-def lazy_config_wrapper(x: Callable) -> Callable[[dict, IsolatedRNG], Any]:
+def lazy_config_wrapper(
+    x: Callable,
+) -> Callable[[dict, IsolatedRNG, DictConfig | None], Any]:
     """Wrap a value in a function that returns the value given a config and rng_tuple.
 
     For easy instantiation through hydra.
@@ -71,7 +75,7 @@ def lazy_config_wrapper(x: Callable) -> Callable[[dict, IsolatedRNG], Any]:
     Callable[[Dict], Any]
         The wrapped value.
     """
-    return lambda _config, _rng_tuple: x()
+    return lambda _config, _rng_tuple, _hydra_config: x()
 
 
 class NoOpContextManager:
@@ -214,9 +218,11 @@ class RayContextManager:
                 ray.worker._global_node.get_session_dir_path(),
             )
             ray.shutdown()
+
             directory_size = shutil.disk_usage(
                 temp_dir,
             ).used
+
             shutil.rmtree(temp_dir)
             log(
                 logging.INFO,
@@ -436,6 +442,7 @@ class FileSystemManager:
         original_hydra_dir: Path,
         file_limit: int,
         starting_round: int | None,
+        log_name: str = f"{Files.MAIN}.{Ext.MAIN}",
     ) -> None:
         """Initialize the context manager.
 
@@ -487,6 +494,8 @@ class FileSystemManager:
             else highest_round
         )
 
+        self.log_name = log_name
+
     def get_save_files_every_round(
         self,
         to_save: list[str],
@@ -526,7 +535,7 @@ class FileSystemManager:
             logging.INFO,
             f"Pre-cleaning {self.to_clean_once}",
         )
-        cleanup(self.working_dir, self.to_clean_once)
+        # cleanup(self.working_dir, self.to_clean_once)
         restore_files(
             self.working_dir,
             self.results_dir,
@@ -557,10 +566,10 @@ class FileSystemManager:
         )
 
         # Move main.log to the working directory
-        main_log = self.original_hydra_dir / f"{Files.MAIN}.{Ext.MAIN}"
+        main_log = self.original_hydra_dir / self.log_name
         shutil.copy2(
             str(main_log),
-            str(self.working_dir / f"{Files.MAIN}.{Ext.MAIN}"),
+            str(self.working_dir / self.log_name),
         )
         save_files(
             self.working_dir,
@@ -577,3 +586,43 @@ class FileSystemManager:
             self.working_dir,
             to_clean=self.to_clean_once,
         )
+
+
+def gather_layers_from_list(lst: NDArrays, idx: list[int]) -> NDArrays | None:
+    """Gather a list of items.
+
+    Parameters
+    ----------
+    lst : list[Any]
+        The list.
+    idx : list[int]
+        The indices to gather.
+
+    Returns
+    -------
+    list[Any]
+        The gathered list.
+    """
+    return (
+        ret if len(ret := [lst[i] for i in idx if i < len(lst)]) == len(idx) else None
+    )
+
+
+def ungather_to_list(lists: list[tuple[list[Any], list[int]]]) -> list[Any]:
+    """Ungather a list of lists.
+
+    Parameters
+    ----------
+    lists : list[tuple[list[Any], list[int]]]
+        The list of lists.
+
+    Returns
+    -------
+    list[Any]
+        The ungathered list.
+    """
+    results: list[Any] = [None] * sum(len(idx) for _, idx in lists)
+    for lst, idx in lists:
+        for j, item_id in enumerate(idx):
+            results[item_id] = lst[j]
+    return results

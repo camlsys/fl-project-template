@@ -11,6 +11,7 @@ from typing import Any
 import flwr as fl
 from flwr.common import NDArrays
 import numpy as np
+from omegaconf import DictConfig
 from torch import nn
 import torch
 from torch.utils.data import DataLoader
@@ -81,7 +82,14 @@ ServerRNG = tuple[
 # Interface for network generators
 # all behavior mutations should be done
 # via closures or the config
-NetGen = Callable[[dict, IsolatedRNG], nn.Module]
+NetGen = Callable[
+    [
+        dict,
+        IsolatedRNG,
+        DictConfig | None,
+    ],
+    nn.Module,
+]
 
 # Dataloader generators for clients and server
 
@@ -89,13 +97,27 @@ NetGen = Callable[[dict, IsolatedRNG], nn.Module]
 # weather the dataloader is for training or evaluation
 # and the config
 ClientDataloaderGen = Callable[
-    [CID, bool, dict, IsolatedRNG],
+    [
+        CID,
+        bool,
+        dict,
+        IsolatedRNG,
+        DictConfig | None,
+    ],
     DataLoader,
 ]
 
 # Server dataloaders only require a config and
 # weather the dataloader is for training or evaluation
-FedDataloaderGen = Callable[[bool, dict, IsolatedRNG], DataLoader]
+FedDataloaderGen = Callable[
+    [
+        bool,
+        dict,
+        IsolatedRNG,
+        DictConfig | None,
+    ],
+    DataLoader,
+]
 
 # Client generators require the client id only
 # necessary for ray instantiation
@@ -103,11 +125,25 @@ FedDataloaderGen = Callable[[bool, dict, IsolatedRNG], DataLoader]
 ClientGen = Callable[[str], fl.client.NumPyClient]
 
 TrainFunc = Callable[
-    [nn.Module, DataLoader, dict, Path, IsolatedRNG],
-    tuple[int, dict],
+    [
+        nn.Module | NDArrays,
+        DataLoader | None,
+        dict,
+        Path,
+        IsolatedRNG,
+        DictConfig | None,
+    ],
+    tuple[nn.Module | NDArrays, int, dict],
 ]
 TestFunc = Callable[
-    [nn.Module, DataLoader, dict, Path, IsolatedRNG],
+    [
+        nn.Module | NDArrays,
+        DataLoader | None,
+        dict,
+        Path,
+        IsolatedRNG,
+        DictConfig | None,
+    ],
     tuple[float, int, dict],
 ]
 
@@ -142,7 +178,15 @@ FedEvalFN = Callable[
 ]
 
 FedEvalGen = Callable[
-    [NetGen, FedDataloaderGen, TestFunc, dict, Path, IsolatedRNG],
+    [
+        NetGen | None,
+        FedDataloaderGen | None,
+        TestFunc,
+        dict,
+        Path,
+        IsolatedRNG,
+        DictConfig | None,
+    ],
     FedEvalFN | None,
 ]
 
@@ -157,12 +201,33 @@ OnEvaluateConfigFN = OnFitConfigFN
 # losing static type checking
 TrainStructure = tuple[TrainFunc, TestFunc, FedEvalGen]
 DataStructure = tuple[
-    NetGen,
-    ClientDataloaderGen,
-    FedDataloaderGen,
-    InitWorkingDir,
+    NetGen | None,
+    ClientDataloaderGen | None,
+    FedDataloaderGen | None,
+    InitWorkingDir | None,
 ]
 ConfigStructure = tuple[OnFitConfigFN, OnEvaluateConfigFN]
+
+
+GetClientGen = Callable[
+    [
+        # The working directory
+        Path,
+        # The network generator
+        NetGen | None,
+        # The client dataloader generator
+        ClientDataloaderGen | None,
+        # The training function
+        TrainFunc,
+        # The testing function
+        TestFunc,
+        # Seeded rng for client seed initialization
+        random.Random,
+        # Hydra config
+        DictConfig | None,
+    ],
+    ClientGen,
+]
 
 
 class IntentionalDropoutError(Exception):

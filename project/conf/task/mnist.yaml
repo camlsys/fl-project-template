@@ -6,6 +6,10 @@ model_and_data: MNIST_CNN
 # Choose the train, test and server fed_eval functions
 train_structure: MNIST
 
+client_gen: DEFAULT
+client_manager: DEFAULT
+server: DEFAULT
+
 # Client fit config
 fit_config:
   # Net does not require any configuration

@@ -6,6 +6,7 @@ multirun/*
 wandb/*
 run_scripts/launch_template.sh
 run_scripts/launch_mnist.sh
+pollen_worker
 
 # Slurm logs
 slurm-*.out
