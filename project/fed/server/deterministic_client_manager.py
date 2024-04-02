@@ -2,11 +2,13 @@
 
 import logging
 import random
+from typing import Any
 
 from flwr.common.logger import log
 from flwr.server.client_manager import SimpleClientManager
 from flwr.server.client_proxy import ClientProxy
 from flwr.server.criterion import Criterion
+from omegaconf import DictConfig
 
 
 class DeterministicClientManager(SimpleClientManager):
@@ -19,6 +21,7 @@ class DeterministicClientManager(SimpleClientManager):
     def __init__(
         self,
         client_cid_generator: random.Random,
+        hydra_config: DictConfig | None,
         enable_resampling: bool = False,
     ) -> None:
         """Initialize DeterministicClientManager.
@@ -38,6 +41,7 @@ class DeterministicClientManager(SimpleClientManager):
 
         self.client_cid_generator = client_cid_generator
         self.enable_resampling = enable_resampling
+        self.hydra_config = hydra_config
 
     def sample(
         self,
@@ -104,3 +108,32 @@ class DeterministicClientManager(SimpleClientManager):
         )
 
         return client_list
+
+
+def dispatch_deterministic_client_manager(
+    cfg: DictConfig, **kwargs: Any
+) -> type[DeterministicClientManager] | None:
+    """Dispatch the get_client_manager function based on the hydra config.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        The configuration for the get_client_manager function.
+        Loaded dynamically from the config file.
+    kwargs : dict[str, Any]
+        Additional keyword arguments to pass to the get_client_manager function.
+
+    Returns
+    -------
+    type[DeterministicClientManager]
+        The get_client_manager function.
+    """
+    client_manager: str | None = cfg.get("task", None).get("client_manager", None)
+
+    if client_manager is None:
+        return None
+
+    if client_manager.upper() == "DEFAULT":
+        return DeterministicClientManager
+
+    return None

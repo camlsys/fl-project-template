@@ -26,9 +26,9 @@ from project.dispatch.dispatch import (
     dispatch_config,
     dispatch_data,
     dispatch_get_client_generator,
+    dispatch_get_client_manager,
     dispatch_train,
 )
-from project.fed.server.deterministic_client_manager import DeterministicClientManager
 from project.fed.server.wandb_server import WandbServer
 from project.fed.utils.utils import (
     get_save_history_to_file,
@@ -200,9 +200,10 @@ def main(cfg: DictConfig) -> None:
 
             # Client manager that samples the same clients
             # For a given seed+checkpoint combination
-            client_manager = DeterministicClientManager(
+            client_manager = dispatch_get_client_manager(cfg)(
                 enable_resampling=cfg.fed.enable_resampling,
                 client_cid_generator=client_cid_rng,
+                hydra_config=cfg,
             )
 
             # Obtain the train/test func and the fed eval func

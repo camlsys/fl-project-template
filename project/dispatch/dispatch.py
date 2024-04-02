@@ -9,6 +9,10 @@ from typing import Any
 
 from omegaconf import DictConfig
 
+from project.fed.server.deterministic_client_manager import (
+    DeterministicClientManager,
+    dispatch_deterministic_client_manager as dispatch_default_client_manager,
+)
 from project.task.default.dispatch import dispatch_config as dispatch_default_config
 from project.task.default.dispatch import dispatch_data as dispatch_default_data
 from project.task.default.dispatch import dispatch_train as dispatch_default_train
@@ -169,12 +173,46 @@ def dispatch_get_client_generator(cfg: DictConfig, **kwargs: Any) -> GetClientGe
         The get_client_generators function.
     """
     # Create the list of task dispatches to try
-    task_get_client_generators: list[Callable[..., Callable | None]] = [
+    task_get_client_generators: list[Callable[..., GetClientGen | None]] = [
         dispatch_default_client_gen
     ]
 
     # Match the first function which does not return None
     for task in task_get_client_generators:
+        result = task(cfg, **kwargs)
+        if result is not None:
+            return result
+
+    raise ValueError(
+        f"Unable to match the get_client_generators function: {cfg}",
+    )
+
+
+def dispatch_get_client_manager(
+    cfg: DictConfig, **kwargs: Any
+) -> type[DeterministicClientManager]:
+    """Dispatch the get_client_manager function based on the hydra config.
+
+    Parameters
+    ----------
+    cfg : DictConfig
+        The configuration for the get_client_manager function.
+        Loaded dynamically from the config file.
+    kwargs : dict[str, Any]
+        Additional keyword arguments to pass to the get_client_manager function.
+
+    Returns
+    -------
+    type[DeterministicClientManager]
+        The get_client_manager function.
+    """
+    # Create the list of task dispatches to try
+    task_get_client_managers: list[
+        Callable[..., type[DeterministicClientManager] | None]
+    ] = [dispatch_default_client_manager]
+
+    # Match the first function which does not return None
+    for task in task_get_client_managers:
         result = task(cfg, **kwargs)
         if result is not None:
             return result

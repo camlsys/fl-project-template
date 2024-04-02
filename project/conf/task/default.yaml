@@ -7,6 +7,7 @@ model_and_data: DEFAULT
 train_structure: DEFAULT
 
 client_gen: DEFAULT
+client_manager: DEFAULT
 
 # Client fit config
 fit_config:
