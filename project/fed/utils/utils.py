@@ -28,6 +28,7 @@ from project.types.common import (
     ClientGen,
     Ext,
     Files,
+    InitialParameterGen,
     IsolatedRNGState,
     IsolatedRNG,
     ServerRNG,
@@ -94,6 +95,39 @@ def generic_get_parameters(net: nn.Module) -> NDArrays:
     return parameters
 
 
+def generate_initial_params_from_net_generator(
+    net_gen: NetGen | None,
+    config: dict,
+    server_rng: IsolatedRNG,
+    hydra_config: DictConfig | None,
+) -> Parameters | None:
+    """Generate initial parameters from a network generator.
+
+    Parameters
+    ----------
+    net_gen : NetGen
+        The network generator.
+    config : dict
+        The configuration.
+    server_rng_tuple : IsolatedRNG
+        The server RNG tuple.
+    hydra_config : DictConfig
+        The Hydra configuration.
+
+    Returns
+    -------
+    Parameter s
+        The initial parameters.
+    """
+    return (
+        ndarrays_to_parameters(
+            generic_get_parameters(net_gen(config, server_rng, hydra_config)),
+        )
+        if net_gen is not None
+        else None
+    )
+
+
 def load_parameters_from_file(path: Path) -> Parameters:
     """Load parameters from a binary file.
 
@@ -131,6 +165,7 @@ def load_parameters_from_file(path: Path) -> Parameters:
 
 def get_state(
     net_generator: NetGen | None,
+    initial_parameter_gen: InitialParameterGen | None,
     config: dict,
     load_parameters_from: Path | None,
     load_rng_from: Path | None,
@@ -167,12 +202,10 @@ def get_state(
 
         return (
             (
-                ndarrays_to_parameters(
-                    generic_get_parameters(
-                        net_generator(config, server_rng_tuple[0], hydra_config)
-                    ),
+                initial_parameter_gen(
+                    net_generator, config, server_rng_tuple[0], hydra_config
                 )
-                if net_generator is not None
+                if initial_parameter_gen is not None
                 else None
             ),
             server_rng_tuple,
@@ -182,6 +215,7 @@ def get_state(
         if server_round is None:
             return get_state(
                 net_generator,
+                initial_parameter_gen,
                 config,
                 None,
                 load_rng_from=None,
@@ -220,8 +254,9 @@ def get_state(
 
         return get_state(
             net_generator,
-            config,
-            None,
+            initial_parameter_gen,
+            config=config,
+            load_parameters_from=None,
             load_rng_from=None,
             load_history_from=None,
             seed=seed,

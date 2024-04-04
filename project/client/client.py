@@ -5,10 +5,11 @@ Make sure the model and dataset are not loaded before the fit function.
 
 import random
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import flwr as fl
 from flwr.common import NDArrays
+from flwr.server import History
 from omegaconf import DictConfig
 from pydantic import BaseModel
 from torch import nn
@@ -24,12 +25,18 @@ from project.types.common import (
     ClientGen,
     EvalRes,
     FitRes,
-    GetClientGen,
+    ClientTypeGen,
     NetGen,
     TestFunc,
     TrainFunc,
+    ServerRNG,
 )
 from project.utils.utils import obtain_device
+from flwr.simulation.ray_transport.ray_actor import (
+    DefaultActor,
+    VirtualClientEngineActor,
+)
+from flwr.common import Parameters
 
 
 class ClientConfig(BaseModel):
@@ -366,7 +373,18 @@ def get_client_generator(
     return client_generator
 
 
-def dispatch_client_gen(cfg: DictConfig, **kwargs: Any) -> GetClientGen | None:
+def dispatch_client_gen(
+    cfg: DictConfig,
+    saved_state: tuple[Parameters | None, ServerRNG, History],
+    **kwargs: Any,
+) -> (
+    tuple[
+        ClientTypeGen,
+        type[VirtualClientEngineActor],
+        dict[str, Any] | None,
+    ]
+    | None
+):
     """Dispatch the get_client_generator function based on the hydra config.
 
     Parameters
@@ -377,9 +395,9 @@ def dispatch_client_gen(cfg: DictConfig, **kwargs: Any) -> GetClientGen | None:
 
     Returns
     -------
-    Optional[GetClientGen]
-        The get_client_generator function.
-        Return None if you cannot match the cfg.
+    tuple[GetClientGen, type[VirtualClientEngineActor], dict[str, Any]] | None
+        The get_client_generator function and the actor type.
+        Together with actor kwargs.
     """
     client_gen: str | None = cfg.get("task", None).get("client_gen", None)
 
@@ -387,6 +405,10 @@ def dispatch_client_gen(cfg: DictConfig, **kwargs: Any) -> GetClientGen | None:
         return None
 
     if client_gen.upper() == "DEFAULT":
-        return get_client_generator
+        return (
+            get_client_generator,
+            cast(type[VirtualClientEngineActor], DefaultActor),
+            None,
+        )
 
     return None

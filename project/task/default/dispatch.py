@@ -36,6 +36,10 @@ from project.task.default.train_test import (
 )
 from project.types.common import ConfigStructure, DataStructure, TrainStructure
 
+from project.fed.utils.utils import (
+    generate_initial_params_from_net_generator as get_initial_parameters,
+)
+
 
 def dispatch_train(
     cfg: DictConfig,
@@ -111,6 +115,7 @@ def dispatch_data(cfg: DictConfig, **kwargs: Any) -> DataStructure | None:
     if client_model_and_data is not None and client_model_and_data.upper() == "DEFAULT":
         ret_tuple: DataStructure = (
             get_net,
+            get_initial_parameters,
             get_client_dataloader,
             get_fed_dataloader,
             init_working_dir,

@@ -34,10 +34,14 @@ from project.task.mnist_classification.dispatch import (
     dispatch_train as dispatch_mnist_train,
 )
 from project.types.common import (
+    ClientAndActorStructure,
     ConfigStructure,
     DataStructure,
-    GetClientGen,
+    ClientTypeGen,
     TrainStructure,
+)
+from flwr.simulation.ray_transport.ray_actor import (
+    VirtualClientEngineActor,
 )
 
 
@@ -154,7 +158,9 @@ def dispatch_config(cfg: DictConfig, **kwargs: Any) -> ConfigStructure:
     )
 
 
-def dispatch_get_client_generator(cfg: DictConfig, **kwargs: Any) -> GetClientGen:
+def dispatch_get_client_generator(
+    cfg: DictConfig, **kwargs: Any
+) -> ClientAndActorStructure:
     """Dispatch the get_client_generator function based on the hydra config.
 
     Functionality should be added to the dispatch.py
@@ -177,7 +183,17 @@ def dispatch_get_client_generator(cfg: DictConfig, **kwargs: Any) -> GetClientGe
         The get_client_generators function.
     """
     # Create the list of task dispatches to try
-    task_get_client_generators: list[Callable[..., GetClientGen | None]] = [
+    task_get_client_generators: list[
+        Callable[
+            ...,
+            tuple[
+                ClientTypeGen,
+                type[VirtualClientEngineActor],
+                dict[str, Any] | None,
+            ]
+            | None,
+        ]
+    ] = [
         dispatch_default_client_gen,
     ]
 

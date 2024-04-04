@@ -148,6 +148,7 @@ def main(cfg: DictConfig) -> None:
             # Change the cfg.task.model_and_data str to change functionality
             (
                 net_generator,
+                initial_parameter_gen,
                 client_dataloader_gen,
                 fed_dataloader_gen,
                 init_working_dir,
@@ -168,7 +169,8 @@ def main(cfg: DictConfig) -> None:
 
             saved_state = get_state(
                 net_generator,
-                cast(
+                initial_parameter_gen,
+                config=cast(
                     dict,
                     OmegaConf.to_container(
                         cfg.task.net_config_initial_parameters,
@@ -223,7 +225,9 @@ def main(cfg: DictConfig) -> None:
                 on_evaluate_config_fn,
             ) = dispatch_config(cfg)
 
-            get_client_generator = dispatch_get_client_generator(cfg)
+            get_client_generator, actor_type, actor_kwargs = (
+                dispatch_get_client_generator(cfg, saved_state=saved_state)
+            )
 
             # Build the evaluate function from the given components
             # This is the function that is called on the server
@@ -372,6 +376,8 @@ def main(cfg: DictConfig) -> None:
                     if cfg.ray_address is not None
                     else {"include_dashboard": False}
                 ),
+                actor_type=actor_type,
+                actor_kwargs=actor_kwargs,
             )
 
         # Sync the entire results dir to wandb if enabled

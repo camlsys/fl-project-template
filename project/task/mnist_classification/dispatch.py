@@ -24,6 +24,9 @@ from pathlib import Path
 from typing import Any
 
 from omegaconf import DictConfig
+from project.fed.utils.utils import (
+    generate_initial_params_from_net_generator as get_initial_parameters,
+)
 
 from project.task.default.dispatch import (
     dispatch_config as dispatch_default_config,
@@ -131,6 +134,7 @@ def dispatch_data(cfg: DictConfig, **kwargs: Any) -> DataStructure | None:
         if client_model_and_data.upper() == "MNIST_CNN":
             return (
                 get_net,
+                get_initial_parameters,
                 client_dataloader_gen,
                 fed_dataloader_gen,
                 init_working_dir_default,
@@ -138,6 +142,7 @@ def dispatch_data(cfg: DictConfig, **kwargs: Any) -> DataStructure | None:
         elif client_model_and_data.upper() == "MNIST_LR":
             return (
                 get_logistic_regression,
+                get_initial_parameters,
                 client_dataloader_gen,
                 fed_dataloader_gen,
                 init_working_dir_default,
