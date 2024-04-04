@@ -152,7 +152,7 @@ def main(cfg: DictConfig) -> None:
                 client_dataloader_gen,
                 fed_dataloader_gen,
                 init_working_dir,
-            ) = dispatch_data(
+            ) = data_structure = dispatch_data(
                 cfg,
             )
             # The folder starts either empty or only with restored files
@@ -214,7 +214,7 @@ def main(cfg: DictConfig) -> None:
                 train_func,
                 test_func,
                 get_fed_eval_fn,
-            ) = dispatch_train(cfg)
+            ) = train_structure = dispatch_train(cfg)
 
             # Obtain the on_fit config and on_eval config
             # generation functions
@@ -223,10 +223,17 @@ def main(cfg: DictConfig) -> None:
             (
                 on_fit_config_fn,
                 on_evaluate_config_fn,
-            ) = dispatch_config(cfg)
+            ) = config_structure = dispatch_config(cfg)
 
             get_client_generator, actor_type, actor_kwargs = (
-                dispatch_get_client_generator(cfg, saved_state=saved_state)
+                dispatch_get_client_generator(
+                    cfg,
+                    saved_state=saved_state,
+                    working_dir=working_dir,
+                    data_structure=data_structure,
+                    train_structure=train_structure,
+                    config_structure=config_structure,
+                )
             )
 
             # Build the evaluate function from the given components

@@ -23,6 +23,8 @@ from project.types.common import (
     CID,
     ClientDataloaderGen,
     ClientGen,
+    ConfigStructure,
+    DataStructure,
     EvalRes,
     FitRes,
     ClientTypeGen,
@@ -30,6 +32,7 @@ from project.types.common import (
     TestFunc,
     TrainFunc,
     ServerRNG,
+    TrainStructure,
 )
 from project.utils.utils import obtain_device
 from flwr.simulation.ray_transport.ray_actor import (
@@ -376,6 +379,10 @@ def get_client_generator(
 def dispatch_client_gen(
     cfg: DictConfig,
     saved_state: tuple[Parameters | None, ServerRNG, History],
+    working_dir: Path,
+    data_structure: DataStructure,
+    train_structure: TrainStructure,
+    config_structure: ConfigStructure,
     **kwargs: Any,
 ) -> (
     tuple[
