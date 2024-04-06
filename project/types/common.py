@@ -16,6 +16,8 @@ from torch import nn
 import torch
 from torch.utils.data import DataLoader
 import enum
+from flwr.common import Parameters
+from flwr.simulation.ray_transport.ray_actor import VirtualClientEngineActor
 
 CID = str | int | Path
 
@@ -90,6 +92,20 @@ NetGen = Callable[
     ],
     nn.Module,
 ]
+
+
+# Allows obtaining initial parameters for the network
+# Can be used even if NetGen is not provided
+InitialParameterGen = Callable[
+    [
+        NetGen | None,
+        dict,
+        IsolatedRNG,
+        DictConfig | None,
+    ],
+    Parameters | None,
+]
+
 
 # Dataloader generators for clients and server
 
@@ -202,6 +218,7 @@ OnEvaluateConfigFN = OnFitConfigFN
 TrainStructure = tuple[TrainFunc, TestFunc, FedEvalGen]
 DataStructure = tuple[
     NetGen | None,
+    InitialParameterGen | None,
     ClientDataloaderGen | None,
     FedDataloaderGen | None,
     InitWorkingDir | None,
@@ -209,7 +226,9 @@ DataStructure = tuple[
 ConfigStructure = tuple[OnFitConfigFN, OnEvaluateConfigFN]
 
 
-GetClientGen = Callable[
+# Returns a client generator and the ray actor which
+# Dispatches clients
+ClientTypeGen = Callable[
     [
         # The working directory
         Path,
@@ -227,6 +246,12 @@ GetClientGen = Callable[
         DictConfig | None,
     ],
     ClientGen,
+]
+
+ClientAndActorStructure = tuple[
+    ClientTypeGen,
+    type[VirtualClientEngineActor],
+    dict[str, Any] | None,
 ]
 
 

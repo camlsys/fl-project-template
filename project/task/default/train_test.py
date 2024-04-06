@@ -264,6 +264,20 @@ def get_fed_eval_fn(
     return fed_eval_fn
 
 
+# Get NONE fed eval fn
+def get_none_fed_eval_fn(
+    net_generator: NetGen | None,
+    fed_dataloader_generator: FedDataloaderGen | None,
+    test_func: TestFunc,
+    _config: dict,
+    working_dir: Path,
+    rng_tuple: IsolatedRNG,
+    hydra_config: DictConfig | None,
+) -> FedEvalFN | None:
+    """Get an empty federated evaluation function."""
+    return None
+
+
 def get_on_fit_config_fn(fit_config: dict) -> OnFitConfigFN:
     """Generate on_fit_config_fn based on a dict from the hydra config,.
 
