@@ -38,6 +38,7 @@ from project.types.common import (
     RNGStateTuple,
 )
 from project.utils.utils import obtain_device
+import operator
 
 
 def generic_set_parameters(
@@ -60,7 +61,9 @@ def generic_set_parameters(
     -------
     None
     """
-    sorted_dict = sorted(net.state_dict().items(), key=lambda x: x[0])  # Sort by keys
+    sorted_dict = sorted(
+        net.state_dict().items(), key=operator.itemgetter(0)
+    )  # Sort by keys
 
     params_dict = zip(
         (keys for keys, _ in sorted_dict),
@@ -88,7 +91,7 @@ def generic_get_parameters(net: nn.Module) -> NDArrays:
         The parameters of the network.
     """
     state_dict_items = sorted(
-        net.state_dict().items(), key=lambda x: x[0]
+        net.state_dict().items(), key=operator.itemgetter(0)
     )  # Sort by keys
     parameters = [val.cpu().numpy() for _, val in state_dict_items]
 
