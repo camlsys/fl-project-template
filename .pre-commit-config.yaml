@@ -12,7 +12,7 @@ exclude: |
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.14
+    rev: v0.5.0
     hooks:
       - id: ruff
         types_or: [python, pyi, jupyter]
@@ -30,7 +30,7 @@ repos:
     hooks:
     - id: shfmt 
   - repo: https://github.com/psf/black
-    rev: 24.1.1
+    rev: 24.4.2
     hooks:
     - id: black-jupyter
       language_version: python3.11
@@ -43,7 +43,7 @@ repos:
         language: system
         types: [file, python]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0 # Use the ref you want to point at
+    rev: v4.6.0 # Use the ref you want to point at
     hooks:
       - id: check-added-large-files
       - id: check-ast
