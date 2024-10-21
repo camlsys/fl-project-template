@@ -12,13 +12,13 @@ exclude: |
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.14
+    rev: v0.7.0
     hooks:
       - id: ruff
         types_or: [python, pyi, jupyter]
         args: [--fix, --preview, --extend-ignore=PLR0917,--extend-ignore=PLR0914]
   - repo: https://github.com/lyz-code/yamlfix/
-    rev: 1.16.0
+    rev: 1.17.0
     hooks:
       - id: yamlfix
   - repo: https://github.com/shellcheck-py/shellcheck-py
@@ -26,11 +26,11 @@ repos:
     hooks:
     -   id: shellcheck
   - repo: https://github.com/scop/pre-commit-shfmt
-    rev: v3.8.0-1
+    rev: v3.10.0-1
     hooks:
     - id: shfmt 
   - repo: https://github.com/psf/black
-    rev: 24.1.1
+    rev: 24.10.0
     hooks:
     - id: black-jupyter
       language_version: python3.11
@@ -43,7 +43,7 @@ repos:
         language: system
         types: [file, python]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0 # Use the ref you want to point at
+    rev: v5.0.0 # Use the ref you want to point at
     hooks:
       - id: check-added-large-files
       - id: check-ast
